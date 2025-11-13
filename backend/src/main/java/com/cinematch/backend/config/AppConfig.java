@@ -1,8 +1,13 @@
 package com.cinematch.backend.config;
 
-/**
- * Γενικές ρυθμίσεις Spring Boot θα μπουν εδώ
- * (security config, datasource config κλπ) σε επόμενα US.
- */
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+@Configuration
 public class AppConfig {
+    @Bean
+    public BCryptPasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 }
