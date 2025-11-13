@@ -1,5 +1,6 @@
-package com.cinematch.users;
+package com.cinematch.backend.repository;
 
+import com.cinematch.backend.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

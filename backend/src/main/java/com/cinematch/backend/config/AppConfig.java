@@ -1,4 +1,4 @@
-package com.cinematch.config;
+package com.cinematch.backend.config;
 
 /**
  * Γενικές ρυθμίσεις Spring Boot θα μπουν εδώ

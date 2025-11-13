@@ -1,4 +1,4 @@
-package com.cinematch.security;
+package com.cinematch.backend.security;
 
 /**
  * Security-related classes (JWT, filters, config)

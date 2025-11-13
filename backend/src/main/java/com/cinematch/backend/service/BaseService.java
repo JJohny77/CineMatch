@@ -1,4 +1,4 @@
-package com.cinematch.service;
+package com.cinematch.backend.service;
 
 /**
  * Base placeholder service.
