@@ -1,4 +1,4 @@
-package com.cinematch.repository;
+package com.cinematch.backend.repository;
 
 /**
  * Base placeholder repository.

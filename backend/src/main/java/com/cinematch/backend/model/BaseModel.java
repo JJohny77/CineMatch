@@ -1,4 +1,4 @@
-package com.cinematch.model;
+package com.cinematch.backend.model;
 
 /**
  * Base placeholder model.

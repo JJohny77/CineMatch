@@ -1,5 +1,6 @@
 package com.cinematch.backend.model;
 
+import com.cinematch.backend.auth.Role;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -32,9 +33,4 @@ public class User {
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-    public enum Role {
-        USER,
-        ADMIN
-    }
 }
