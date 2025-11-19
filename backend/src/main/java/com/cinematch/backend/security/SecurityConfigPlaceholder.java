@@ -12,8 +12,15 @@ public class SecurityConfigPlaceholder {
 
         http
                 .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth ->
-                        auth.anyRequest().permitAll()
+                .authorizeHttpRequests(auth -> auth
+                        // Health check - always public
+                        .requestMatchers("/api/health").permitAll()
+
+                        // Auth endpoints προσωρινά public (US5/US6)
+                        .requestMatchers("/auth/**").permitAll()
+
+                        // Όλα τα υπόλοιπα προσωρινά public (placeholder mode)
+                        .anyRequest().permitAll()
                 );
 
         return http.build();
