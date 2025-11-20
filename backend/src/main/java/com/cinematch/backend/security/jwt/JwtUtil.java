@@ -55,4 +55,15 @@ public class JwtUtil {
                 .parseClaimsJws(token)
                 .getBody();
     }
+    // ---------------------------------------------------------------
+// 5) Validate token
+// ---------------------------------------------------------------
+    public boolean validateToken(String token) {
+        try {
+            return !isTokenExpired(token);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
 }
