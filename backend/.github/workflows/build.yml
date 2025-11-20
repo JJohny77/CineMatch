@@ -33,5 +33,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Build with Maven (no tests for Sprint 1)
-        run: mvn -B package -DskipTests=false
+      # 🔥 Τώρα ΔΕΝ κάνουμε package, κάνουμε κανονικά tests
+      - name: Run Unit Tests
+        run: mvn -B test
