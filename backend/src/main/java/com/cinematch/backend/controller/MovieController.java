@@ -1,11 +1,13 @@
 package com.cinematch.backend.controller;
 
+import com.cinematch.backend.dto.MovieDetailsDto;
 import com.cinematch.backend.dto.MovieSearchResponse;
 import com.cinematch.backend.dto.TrendingMovieDto;
 import com.cinematch.backend.service.TmdbService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -38,6 +40,17 @@ public class MovieController {
     ) {
         return ResponseEntity.ok(
                 tmdbService.getTrendingMovies(time_window)
+        );
+    }
+
+    /**
+     * US18 – Movie details
+     * GET /movies/{id}
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<MovieDetailsDto> getMovieDetails(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(
+                tmdbService.getMovieDetails(id)
         );
     }
 }
