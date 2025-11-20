@@ -1,6 +1,8 @@
 package com.cinematch.backend.service;
 
 import com.cinematch.backend.dto.TrendingMovieDto;
+
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,6 +17,7 @@ import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.web.util.UriUtils;
 
 import java.net.URI;
 import java.util.Map;
@@ -86,28 +89,28 @@ public class TmdbService {
      *   GET /movies/search?query=...
      */
     public MovieSearchResponse searchMovies(String query) {
-
-        // 1. endpoint path του TMDb
-        String path = "/search/movie";
-
-        // 2. extra query params
-        Map<String, String> params = Map.of(
-                "query", query,
-                "language", "en-US",
-                "include_adult", "false"
-        );
-
-        // 3. Παίρνουμε raw JSON από το TMDb
-        String json = fetchFromTmdb(path, params);
-
-        // 4. Κάνουμε map το JSON στα DTO μας
         try {
-            ObjectMapper mapper = new ObjectMapper();
-            return mapper.readValue(json, MovieSearchResponse.class);
+            if (query == null || query.isBlank()) {
+                throw new IllegalArgumentException("Query cannot be empty");
+            }
+
+            String url = baseUrl + "/search/movie" +
+                    "?api_key=" + apiKey +
+                    "&query=" + UriUtils.encode(query, StandardCharsets.UTF_8) +
+                    "&language=en-US" +
+                    "&include_adult=false";
+
+            logger.info("TMDb Search Request URL: " + url);
+
+            ResponseEntity<String> response =
+                    restTemplate.getForEntity(url, String.class);
+
+            // Μετατροπή JSON → DTO (όπως στο trending αλλά με structured DTO)
+            return objectMapper.readValue(response.getBody(), MovieSearchResponse.class);
 
         } catch (Exception e) {
-            logger.error("Failed to parse TMDb response", e);
-            throw new RuntimeException("Failed to parse TMDb response");
+            logger.error("Error while searching movies: " + e.getMessage());
+            throw new RuntimeException("Failed to search movies");
         }
     }
     public List<TrendingMovieDto> getTrendingMovies(String timeWindow) {
