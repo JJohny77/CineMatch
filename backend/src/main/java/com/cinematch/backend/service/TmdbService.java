@@ -1,5 +1,9 @@
 package com.cinematch.backend.service;
 
+import com.cinematch.backend.dto.TrendingMovieDto;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.cinematch.backend.dto.MovieSearchResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -28,6 +32,10 @@ public class TmdbService {
     private final TmdbEnvService envService;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Value("${tmdb.api.key}")
+    private String apiKey;
+
 
     public TmdbService(
             @Value("${tmdb.api.base-url}") String baseUrl,
@@ -102,5 +110,50 @@ public class TmdbService {
             throw new RuntimeException("Failed to parse TMDb response");
         }
     }
+    public List<TrendingMovieDto> getTrendingMovies(String timeWindow) {
+        try {
+            if (!timeWindow.equals("day") && !timeWindow.equals("week")) {
+                timeWindow = "day";
+            }
+
+            String url = baseUrl + "/trending/movie/" + timeWindow +
+                    "?api_key=" + apiKey +
+                    "&language=en-US";
+
+
+            logger.info("TMDb Trending Request URL: " + url);
+
+            ResponseEntity<String> response =
+                    restTemplate.getForEntity(url, String.class);
+
+            Map<String, Object> json =
+                    objectMapper.readValue(response.getBody(), Map.class);
+
+            List<Map<String, Object>> results =
+                    (List<Map<String, Object>>) json.get("results");
+
+            List<TrendingMovieDto> output = new ArrayList<>();
+
+            for (Map<String, Object> movie : results) {
+                TrendingMovieDto dto = new TrendingMovieDto(
+                        (String) movie.get("title"),
+                        (String) movie.get("overview"),
+                        (String) movie.get("poster_path"),
+                        movie.get("popularity") != null ?
+                                ((Number) movie.get("popularity")).doubleValue() : 0.0,
+                        (String) movie.get("release_date")
+                );
+
+                output.add(dto);
+            }
+
+            return output;
+
+        } catch (Exception e) {
+            logger.error("Error while parsing Trending Movies: " + e.getMessage());
+            throw new RuntimeException("Failed to load trending movies");
+        }
+    }
+
 
 }
