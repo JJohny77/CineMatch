@@ -1,12 +1,19 @@
 package com.cinematch.backend.security;
 
+import com.cinematch.backend.security.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
+@RequiredArgsConstructor
 public class SecurityConfigPlaceholder {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
@@ -16,12 +23,15 @@ public class SecurityConfigPlaceholder {
                         // Health check - always public
                         .requestMatchers("/api/health").permitAll()
 
-                        // Auth endpoints προσωρινά public (US5/US6)
+                        // Auth endpoints public
                         .requestMatchers("/auth/**").permitAll()
 
                         // Όλα τα υπόλοιπα προσωρινά public (placeholder mode)
                         .anyRequest().permitAll()
-                );
+                )
+
+                // 🔥 Εδώ προσθέτουμε το JWT φίλτρο πριν το default filter
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
