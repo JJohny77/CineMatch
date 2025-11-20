@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -49,19 +50,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 4. Πάρε email από το token
         String email = jwtUtil.extractEmail(token);
 
-        // 5. Φτιάξε authentication object (χωρίς roles για τώρα)
+        // 5. Πάρε role από το token
+        String role = jwtUtil.extractRole(token);
+
+
+        var authorities = Collections.singletonList(
+                new SimpleGrantedAuthority("ROLE_" + role)
+        );
+
+
+// 7. Φτιάξε authentication object με authorities
         UsernamePasswordAuthenticationToken authToken =
                 new UsernamePasswordAuthenticationToken(
                         email,
                         null,
-                        Collections.emptyList()   // TODO: Roles στο US9
+                        authorities
                 );
 
-        authToken.setDetails(
-                new WebAuthenticationDetailsSource().buildDetails(request)
-        );
-
-        // 6. Βάλε τον χρήστη στο SecurityContext
+        // 8. Βάλε τον χρήστη στο SecurityContext
         SecurityContextHolder.getContext().setAuthentication(authToken);
 
         filterChain.doFilter(request, response);

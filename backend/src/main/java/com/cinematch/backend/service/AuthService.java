@@ -48,6 +48,6 @@ public class AuthService {
         }
 
         // 3. Δημιουργία JWT token
-        return jwtUtil.generateToken(user.getEmail());
+        return jwtUtil.generateToken(user.getEmail(), user.getRole().name());
     }
 }

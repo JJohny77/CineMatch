@@ -26,6 +26,15 @@ public class SecurityConfigPlaceholder {
                         // Auth endpoints public
                         .requestMatchers("/auth/**").permitAll()
 
+                        // 🔥 ADMIN-ONLY endpoints
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+
+                        // 🔥 USER-ONLY endpoints
+                        .requestMatchers("/user/**").hasRole("USER")
+
+                        // 🔥 USER + ADMIN μπορούν να δουν ταινίες, trending, search
+                        .requestMatchers("/movies/**").hasAnyRole("USER", "ADMIN")
+
                         // Όλα τα υπόλοιπα προσωρινά public (placeholder mode)
                         .anyRequest().permitAll()
                 )

@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.HashMap;                                      // Για extra claims.
+import java.util.Map;
 
 @Component
 public class JwtUtil {
@@ -21,9 +23,13 @@ public class JwtUtil {
     // ---------------------------------------------------------------
     // 1) Generate Token
     // ---------------------------------------------------------------
-    public String generateToken(String email) {
+    public String generateToken(String email, String role) {
+
+        Map<String, Object> claims = new HashMap<>();     // Φτιάχνουμε map για extra claims.
+        claims.put("role", role);                         // Βάζουμε το role μέσα στο JWT.
 
         return Jwts.builder()
+                .setClaims(claims)
                 .setSubject(email)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
@@ -38,15 +44,32 @@ public class JwtUtil {
         return getClaims(token).getSubject();
     }
 
+    // ------------------------------------------------------------------
+    // 3) Extract Role
+    // ------------------------------------------------------------------
+    public String extractRole(String token) {
+        return (String) getClaims(token).get("role");     // Παίρνει το claim "role".
+    }
+
     // ---------------------------------------------------------------
-    // 3) Check if token is expired
+    // 4) Check if token is expired
     // ---------------------------------------------------------------
     public boolean isTokenExpired(String token) {
         return getClaims(token).getExpiration().before(new Date());
     }
 
+    // 5) Validate token
+// ---------------------------------------------------------------
+    public boolean validateToken(String token) {
+        try {
+            return !isTokenExpired(token);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     // ---------------------------------------------------------------
-    // 4) Internal method: extract all claims
+    // 6) Internal method: extract all claims
     // ---------------------------------------------------------------
     private Claims getClaims(String token) {
         return Jwts.parserBuilder()
@@ -56,14 +79,6 @@ public class JwtUtil {
                 .getBody();
     }
     // ---------------------------------------------------------------
-// 5) Validate token
-// ---------------------------------------------------------------
-    public boolean validateToken(String token) {
-        try {
-            return !isTokenExpired(token);
-        } catch (Exception e) {
-            return false;
-        }
-    }
+
 
 }
