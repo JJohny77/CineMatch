@@ -29,11 +29,15 @@ public class SecurityConfigPlaceholder {
                         // 🔥 ADMIN-ONLY endpoints
                         .requestMatchers("/admin/**").hasRole("ADMIN")
 
+
+                        // QUIZ: μόνο authenticated users (USER + ADMIN)
+                        .requestMatchers("/quiz/**").authenticated()
+
                         // 🔥 USER-ONLY endpoints
                         .requestMatchers("/user/**").hasRole("USER")
 
                         // 🔥 USER + ADMIN μπορούν να δουν ταινίες, trending, search
-                        .requestMatchers("/movies/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/movies/**").permitAll()
 
                         // Όλα τα υπόλοιπα προσωρινά public (placeholder mode)
                         .anyRequest().permitAll()
