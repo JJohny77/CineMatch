@@ -22,14 +22,14 @@ public class AuthController {
         return ResponseEntity.ok("User registered successfully");
     }
 
-    // 🔥 ΝΕΟ ENDPOINT LOGIN
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody @Valid LoginRequest request) {
         try {
-            authService.login(request);
-            return ResponseEntity.ok("{\"message\":\"Login successful\"}");
+            String token = authService.login(request);
+            return ResponseEntity.ok("{\"token\":\"" + token + "\"}");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body("{\"error\":\"" + e.getMessage() + "\"}");
         }
     }
+
 }
