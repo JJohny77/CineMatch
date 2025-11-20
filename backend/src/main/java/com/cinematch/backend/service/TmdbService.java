@@ -1,7 +1,7 @@
 package com.cinematch.backend.service;
 
 import com.cinematch.backend.dto.TrendingMovieDto;
-
+import com.cinematch.backend.dto.MovieDetailsDto;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -155,6 +155,67 @@ public class TmdbService {
         } catch (Exception e) {
             logger.error("Error while parsing Trending Movies: " + e.getMessage());
             throw new RuntimeException("Failed to load trending movies");
+        }
+    }
+
+    public MovieDetailsDto getMovieDetails(Long id) {
+        try {
+            if (id == null) {
+                throw new IllegalArgumentException("Movie id cannot be null");
+            }
+
+            // Χρησιμοποιούμε το low-level fetchFromTmdb
+            String path = "/movie/" + id;
+
+            String jsonString = fetchFromTmdb(path, Map.of(
+                    "language", "en-US"
+            ));
+
+            Map<String, Object> json =
+                    objectMapper.readValue(jsonString, Map.class);
+
+            String title = (String) json.get("title");
+            String overview = (String) json.get("overview");
+            String posterPath = (String) json.get("poster_path");
+            String releaseDate = (String) json.get("release_date");
+
+            Integer runtime = null;
+            if (json.get("runtime") != null) {
+                runtime = ((Number) json.get("runtime")).intValue();
+            }
+
+            Double popularity = null;
+            if (json.get("popularity") != null) {
+                popularity = ((Number) json.get("popularity")).doubleValue();
+            }
+
+            // genres: έρχονται ως λίστα από objects { id, name }
+            List<String> genres = new ArrayList<>();
+            Object genresObj = json.get("genres");
+            if (genresObj instanceof List<?> list) {
+                for (Object g : list) {
+                    if (g instanceof Map<?, ?> genreMap) {
+                        Object nameObj = genreMap.get("name");
+                        if (nameObj != null) {
+                            genres.add(nameObj.toString());
+                        }
+                    }
+                }
+            }
+
+            return new MovieDetailsDto(
+                    title,
+                    overview,
+                    posterPath,
+                    releaseDate,
+                    runtime,
+                    popularity,
+                    genres
+            );
+
+        } catch (Exception e) {
+            logger.error("Error while fetching movie details for id {}: {}", id, e.getMessage());
+            throw new RuntimeException("Failed to load movie details");
         }
     }
 
