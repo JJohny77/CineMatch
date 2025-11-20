@@ -2,6 +2,8 @@ package com.cinematch.backend.quiz.service;
 
 import com.cinematch.backend.quiz.dto.QuizQuestion;
 import com.cinematch.backend.quiz.dto.QuizResponse;
+import com.cinematch.backend.repository.UserRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -124,4 +126,28 @@ public class QuizService {
 
         return list;
     }
+    // ================================
+// US23 — Finish quiz & save score
+// ================================
+    public void saveQuizScore(int score, UserRepository userRepository) {
+
+        // 1. Πάρε email από το security context
+        String email = (String) SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getPrincipal();
+
+        // 2. Φέρε τον χρήστη
+        com.cinematch.backend.model.User user = userRepository
+                .findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // 3. Πρόσθεσε το score
+        user.setQuizScore(user.getQuizScore() + score);
+
+        // 4. Αποθήκευσε
+        userRepository.save(user);
+    }
+
+
 }
