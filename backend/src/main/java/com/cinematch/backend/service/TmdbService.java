@@ -18,6 +18,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.util.UriUtils;
+import com.cinematch.backend.dto.MovieVideoDto;
 
 import java.net.URI;
 import java.util.Map;
@@ -219,5 +220,56 @@ public class TmdbService {
         }
     }
 
+    public List<MovieVideoDto> getMovieVideos(Long id) {
+        try {
+            if (id == null) {
+                throw new IllegalArgumentException("Movie id cannot be null");
+            }
+
+            // TMDb endpoint: /movie/{id}/videos
+            String path = "/movie/" + id + "/videos";
+
+            String jsonString = fetchFromTmdb(path, Map.of(
+                    "language", "en-US"
+            ));
+
+            Map<String, Object> json =
+                    objectMapper.readValue(jsonString, Map.class);
+
+            Object resultsObj = json.get("results");
+            List<MovieVideoDto> videos = new ArrayList<>();
+
+            if (resultsObj instanceof List<?> list) {
+                for (Object o : list) {
+                    if (o instanceof Map<?, ?> videoMap) {
+
+                        String site = (String) videoMap.get("site");
+                        String type = (String) videoMap.get("type");
+                        String key = (String) videoMap.get("key");
+                        String name = (String) videoMap.get("name");
+
+                        // Κρατάμε μόνο YouTube trailers
+                        if ("YouTube".equalsIgnoreCase(site)
+                                && "Trailer".equalsIgnoreCase(type)
+                                && key != null) {
+
+                            videos.add(new MovieVideoDto(
+                                    name,
+                                    key,
+                                    site,
+                                    type
+                            ));
+                        }
+                    }
+                }
+            }
+
+            return videos;
+
+        } catch (Exception e) {
+            logger.error("Error while fetching movie videos for id {}: {}", id, e.getMessage());
+            throw new RuntimeException("Failed to load movie videos");
+        }
+    }
 
 }
