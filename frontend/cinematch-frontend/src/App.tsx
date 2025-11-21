@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import MovieDetailsPage from "./pages/MovieDetailsPage";
 import SearchPage from "./pages/SearchPage";
+import TrendingPage from "./pages/TrendingPage";
+
 
 function App() {
   return (
@@ -27,6 +29,10 @@ function App() {
         <Link to="/search" style={{ color: "white", fontSize: "18px", textDecoration: "none" }}>
           Search
         </Link>
+
+        <Link to="/trending" style={{ color: "white", fontSize: "18px", textDecoration: "none" }}>
+          Trending
+        </Link>
       </nav>
 
       {/* MAIN CONTENT (keeps everything below the navbar) */}
@@ -35,6 +41,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/movie/:id" element={<MovieDetailsPage />} />
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/trending" element={<TrendingPage />} />
         </Routes>
       </div>
     </BrowserRouter>
