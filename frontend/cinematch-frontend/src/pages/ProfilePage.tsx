@@ -12,10 +12,12 @@ export default function ProfilePage() {
   useEffect(() => {
     const token = localStorage.getItem("token");
 
-    if (!token) {
-      navigate("/");
-      return;
-    }
+    //if (!token) {
+      //navigate("/");
+      //return;
+    //}
+
+    if (!token) return; // μην κάνεις redirect
 
     axios
       .get("http://localhost:8080/user/profile", {
@@ -42,7 +44,7 @@ export default function ProfilePage() {
     <div
       style={{
         color: "white",
-        paddingTop: "40px",
+        paddingTop: "0px",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",

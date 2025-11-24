@@ -15,7 +15,7 @@ function App() {
       <Navbar />
 
       {/* MAIN CONTENT (ώστε να μην καλύπτεται από το navbar) */}
-      <div style={{ paddingTop: "80px" }}>
+      <div style={{ paddingTop: "100px" }}>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/movie/:id" element={<MovieDetailsPage />} />
