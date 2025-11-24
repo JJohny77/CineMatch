@@ -3,7 +3,11 @@ import HomePage from "./pages/HomePage";
 import MovieDetailsPage from "./pages/MovieDetailsPage";
 import SearchPage from "./pages/SearchPage";
 import TrendingPage from "./pages/TrendingPage";
+import EditProfilePage from "./pages/EditProfilePage";
 
+
+// ⭐ ΝΕΟ import για Profile Page
+import ProfilePage from "./pages/ProfilePage";
 
 function App() {
   return (
@@ -33,6 +37,11 @@ function App() {
         <Link to="/trending" style={{ color: "white", fontSize: "18px", textDecoration: "none" }}>
           Trending
         </Link>
+
+        {/* ⭐ ΝΕΟ link στο Navbar */}
+        <Link to="/profile" style={{ color: "white", fontSize: "18px", textDecoration: "none" }}>
+          Profile
+        </Link>
       </nav>
 
       {/* MAIN CONTENT (keeps everything below the navbar) */}
@@ -42,6 +51,9 @@ function App() {
           <Route path="/movie/:id" element={<MovieDetailsPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/trending" element={<TrendingPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile/edit" element={<EditProfilePage />} />
+
         </Routes>
       </div>
     </BrowserRouter>
