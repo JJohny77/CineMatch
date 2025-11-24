@@ -6,6 +6,8 @@ import TrendingPage from "./pages/TrendingPage";
 import EditProfilePage from "./pages/EditProfilePage";
 import Navbar from "./components/Navbar"; // <<< προστέθηκε
 import ProfilePage from "./pages/ProfilePage";
+import LoginPage from "./pages/LoginPage";       // <<< ΝΕΟ
+import RegisterPage from "./pages/RegisterPage";
 
 function App() {
   return (
@@ -23,6 +25,9 @@ function App() {
           <Route path="/trending" element={<TrendingPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/edit" element={<EditProfilePage />} />
+            {/* AUTH ROUTES */}
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/register" element={<RegisterPage />} />
         </Routes>
       </div>
 
