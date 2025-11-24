@@ -30,11 +30,9 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
-    // Συνολικοί πόντοι του χρήστη από τα Quiz
     @Builder.Default
     @Column(nullable = false)
     private Integer quizScore = 0;
-
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
