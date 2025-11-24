@@ -7,6 +7,8 @@ import EditProfilePage from "./pages/EditProfilePage";
 import Navbar from "./components/Navbar";
 import ProfilePage from "./pages/ProfilePage";
 import LeaderboardPage from "./pages/LeaderboardPage";
+import LoginPage from "./pages/LoginPage";       // <<< ΝΕΟ
+import RegisterPage from "./pages/RegisterPage";
 
 function App() {
   return (
@@ -25,6 +27,9 @@ function App() {
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/edit" element={<EditProfilePage />} />
+            {/* AUTH ROUTES */}
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/register" element={<RegisterPage />} />
         </Routes>
       </div>
 

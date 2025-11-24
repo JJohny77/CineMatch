@@ -1,6 +1,16 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import type React from "react";
+import { logoutUser } from "../utils/auth";
 
 export default function Navbar() {
+  const navigate = useNavigate();
+  const isLoggedIn = !!localStorage.getItem("token");
+
+  function handleLogout() {
+    logoutUser();
+    navigate("/");
+  }
+
   return (
     <nav
       style={{
@@ -25,8 +35,28 @@ export default function Navbar() {
       <Link style={linkStyle} to="/quiz">Quiz</Link>
       <Link style={linkStyle} to="/leaderboard">Leaderboard</Link>
       <Link style={linkStyle} to="/profile">Profile</Link>
-      <div style={{ marginLeft: "auto" }}>
-        <Link style={linkStyle} to="/login">Login / Logout</Link>
+
+      {/* Right side */}
+      <div style={{ marginLeft: "auto", display: "flex", gap: "15px", paddingRight: "40px" }}>
+        {!isLoggedIn ? (
+          <>
+            <Link style={linkStyle} to="/login">Login</Link>
+            <Link style={linkStyle} to="/register">Register</Link>
+          </>
+        ) : (
+          <button
+            onClick={handleLogout}
+            style={{
+              ...linkStyle,
+              backgroundColor: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            Logout
+          </button>
+        )}
       </div>
     </nav>
   );
