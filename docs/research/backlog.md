@@ -1,0 +1,32 @@
+**_Ιδέες για features_**
+
+- User Login/Logout
+- User Roles: Guest, User, Administrator
+- Search Bar -> Αναζητηση Ταινιων, Σκηνοθετες, Κατηγοριες, Ηθοποιοι, Χρονολογια, Εθνικοτητα, Users
+- Navigation Bar -> Posts, Trending, Ranking, News, Quiz, Request a Movie, Sign In, SearchBar, Menu (Left Slider), LanguageSwitcher, Points
+- Menu -> Κατηγοριες Ταινιων, Σκηνοθετες, Ηθοποιοι
+- Where to Watch (Platforms)
+- Παιχνιδι Quiz/Trivia με Leaderboard και points. Automated Questions ή με βοηθεια AI models, Σερι σωστων απαντησεων, Στατιστικα, Κατηγοριες, Προβολη σωστων/λανθασμενων απαντησεων
+- Review & Ratings,
+- Σελιδα Ταινιων
+- Σελιδα Σκηνοθετων
+- Σελιδα Ηθοποιων
+- Σελιδα Καταταξης
+- Σελιδα User, Edit Profile
+- Σελιδα Quiz
+- Στατιστικα Ταινιων (KPIs), Επιλογη 2 δεικτων.
+- Screenshot από σκηνες ταινιας.
+- Συνδρομή (Προαιρετικά) 
+- Ιστορικο των User
+- Αγαπημενα των User
+- Watchlist
+- Προτεινομενα με βαση την χρηση των User
+- Chat Channel
+- Friend Request, Friend List
+- Προβολη Trailer (If possible)
+- Επιλογη License
+- Rating & Σχολια Ιστοσελιδας
+- Button Random Movie
+- Referral A Friend 🡺 + Points
+- Χρηση πόντων
+- Awards Section
