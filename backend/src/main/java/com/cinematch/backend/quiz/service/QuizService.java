@@ -1,5 +1,7 @@
 package com.cinematch.backend.quiz.service;
 
+import com.cinematch.backend.quiz.dto.LeaderboardEntry;
+import java.util.stream.Collectors;
 import com.cinematch.backend.quiz.dto.QuizQuestion;
 import com.cinematch.backend.quiz.dto.QuizResponse;
 import com.cinematch.backend.repository.UserRepository;
@@ -147,6 +149,14 @@ public class QuizService {
 
         // 4. Αποθήκευσε
         userRepository.save(user);
+    }
+
+    public List<LeaderboardEntry> getLeaderboard(UserRepository userRepository) {
+        return userRepository.findAll()
+                .stream()
+                .sorted((u1, u2) -> u2.getQuizScore() - u1.getQuizScore()) // descending
+                .map(u -> new LeaderboardEntry(u.getEmail(), u.getQuizScore()))
+                .collect(Collectors.toList());
     }
 
 

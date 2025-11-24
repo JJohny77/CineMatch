@@ -4,8 +4,9 @@ import MovieDetailsPage from "./pages/MovieDetailsPage";
 import SearchPage from "./pages/SearchPage";
 import TrendingPage from "./pages/TrendingPage";
 import EditProfilePage from "./pages/EditProfilePage";
-import Navbar from "./components/Navbar"; // <<< προστέθηκε
+import Navbar from "./components/Navbar";
 import ProfilePage from "./pages/ProfilePage";
+import LeaderboardPage from "./pages/LeaderboardPage";
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           <Route path="/movie/:id" element={<MovieDetailsPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/trending" element={<TrendingPage />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/edit" element={<EditProfilePage />} />
         </Routes>

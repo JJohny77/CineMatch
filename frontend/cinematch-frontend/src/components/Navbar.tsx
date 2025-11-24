@@ -20,10 +20,11 @@ export default function Navbar() {
     >
       <Link style={linkStyle} to="/">Home</Link>
       <Link style={linkStyle} to="/movies">Movies</Link>
+      <Link style={linkStyle} to="/search">Search</Link>
       <Link style={linkStyle} to="/trending">Trending</Link>
       <Link style={linkStyle} to="/quiz">Quiz</Link>
+      <Link style={linkStyle} to="/leaderboard">Leaderboard</Link>
       <Link style={linkStyle} to="/profile">Profile</Link>
-
       <div style={{ marginLeft: "auto" }}>
         <Link style={linkStyle} to="/login">Login / Logout</Link>
       </div>
