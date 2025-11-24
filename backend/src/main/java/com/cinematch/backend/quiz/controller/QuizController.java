@@ -1,5 +1,8 @@
 package com.cinematch.backend.quiz.controller;
 
+import org.springframework.web.bind.annotation.GetMapping;
+import java.util.List;
+import java.util.ArrayList;
 import com.cinematch.backend.quiz.dto.*;
 import com.cinematch.backend.quiz.service.QuizService;
 import com.cinematch.backend.repository.UserRepository;
@@ -50,6 +53,17 @@ public class QuizController {
         quizService.saveQuizScore(request.getScore(), userRepository);
         return ResponseEntity.ok(new FinishQuizResponse(true));
     }
+
+    // ================================
+// US24 — Leaderboard
+// ================================
+    @GetMapping("/leaderboard")
+    public ResponseEntity<List<LeaderboardEntry>> getLeaderboard() {
+
+
+        return ResponseEntity.ok(quizService.getLeaderboard(userRepository));
+    }
+
 
 
 }

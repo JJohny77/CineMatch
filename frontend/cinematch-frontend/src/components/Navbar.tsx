@@ -3,14 +3,14 @@ import type React from "react";
 import { logoutUser } from "../utils/auth";
 
 export default function Navbar() {
-      const navigate = useNavigate();
+  const navigate = useNavigate();
+  const isLoggedIn = !!localStorage.getItem("token");
 
-      const isLoggedIn = !!localStorage.getItem("token");
+  function handleLogout() {
+    logoutUser();
+    navigate("/");
+  }
 
-      function handleLogout() {
-        logoutUser();       // καθαρίζει token + user
-        navigate("/");      // γυρνάει στην αρχική
-      }
   return (
     <nav
       style={{
@@ -30,39 +30,37 @@ export default function Navbar() {
     >
       <Link style={linkStyle} to="/">Home</Link>
       <Link style={linkStyle} to="/movies">Movies</Link>
+      <Link style={linkStyle} to="/search">Search</Link>
       <Link style={linkStyle} to="/trending">Trending</Link>
       <Link style={linkStyle} to="/quiz">Quiz</Link>
+      <Link style={linkStyle} to="/leaderboard">Leaderboard</Link>
       <Link style={linkStyle} to="/profile">Profile</Link>
 
-       {/* Δεξιά πλευρά */}
-            <div style={{ marginLeft: "auto", display: "flex", gap: "15px", paddingRight: "40px" }}>
-              {!isLoggedIn ? (
-                <>
-                  <Link style={linkStyle} to="/login">
-                    Login
-                  </Link>
-                  <Link style={linkStyle} to="/register">
-                    Register
-                  </Link>
-                </>
-                ) : (
-                <button
-                  onClick={handleLogout}
-                  style={{
-                    ...linkStyle,
-                    backgroundColor: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: 0,
-                  }}
-                >
-                  Logout
-                </button>
-              )}
-            </div>
-          </nav>
-        );
-      }
+      {/* Right side */}
+      <div style={{ marginLeft: "auto", display: "flex", gap: "15px", paddingRight: "40px" }}>
+        {!isLoggedIn ? (
+          <>
+            <Link style={linkStyle} to="/login">Login</Link>
+            <Link style={linkStyle} to="/register">Register</Link>
+          </>
+        ) : (
+          <button
+            onClick={handleLogout}
+            style={{
+              ...linkStyle,
+              backgroundColor: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            Logout
+          </button>
+        )}
+      </div>
+    </nav>
+  );
+}
 
 const linkStyle: React.CSSProperties = {
   color: "white",
