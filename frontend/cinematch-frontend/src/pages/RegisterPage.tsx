@@ -42,27 +42,28 @@ export default function RegisterPage() {
     <div
       style={{
         width: "100%",
-        height: "calc(100vh - 70px)", // πλήρες ύψος κάτω από το navbar
+        height: "calc(100vh - 70px)",
         display: "flex",
-        justifyContent: "center", // κεντράρισμα οριζόντια
-        alignItems: "center", // κεντράρισμα κάθετα
+        justifyContent: "center",
+        alignItems: "center",
+        padding: "0 0px",
+        overflowX: "hidden",       // 🔥 FIX οριζόντιου scroll
         color: "white",
-        padding: "20px",
       }}
     >
       <div
         style={{
           width: "100%",
-          maxWidth: "400px",
+          maxWidth: "420px",
           background: "#181818",
-          padding: "30px",
+          padding: "42px 32px",    // 🔥 ίσο padding παντού
           borderRadius: "12px",
           boxShadow: "0 4px 18px rgba(0,0,0,0.6)",
         }}
       >
         <h1
           style={{
-            marginBottom: "20px",
+            marginBottom: "25px",
             fontSize: "28px",
             textAlign: "center",
           }}
@@ -79,6 +80,7 @@ export default function RegisterPage() {
               background: "#3b1313",
               color: "#ffb3b3",
               fontSize: "14px",
+              textAlign: "center",
             }}
           >
             {error}
@@ -87,11 +89,7 @@ export default function RegisterPage() {
 
         <form
           onSubmit={handleSubmit}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "15px",
-          }}
+          style={{ display: "flex", flexDirection: "column", gap: "15px" }}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <label>Username</label>
@@ -115,7 +113,8 @@ export default function RegisterPage() {
             />
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <div style={{
+              display: "flex", flexDirection: "column", gap: "6px" }}>
             <label>Password</label>
             <input
               type="password"
@@ -130,8 +129,9 @@ export default function RegisterPage() {
             type="submit"
             disabled={loading}
             style={{
+              width: "100%",           // 🔥 πλήρες width
               marginTop: "10px",
-              padding: "10px",
+              padding: "12px",
               borderRadius: "8px",
               border: "none",
               background: "#e50914",
@@ -172,4 +172,6 @@ const inputStyle: React.CSSProperties = {
   background: "#222",
   color: "white",
   fontSize: "14px",
+  boxSizing: "border-box", // 🔥 FIX
 };
+

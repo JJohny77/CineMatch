@@ -139,7 +139,9 @@ public class TmdbService {
             List<TrendingMovieDto> output = new ArrayList<>();
 
             for (Map<String, Object> movie : results) {
+                Long id = ((Number) movie.get("id")).longValue();
                 TrendingMovieDto dto = new TrendingMovieDto(
+                        id,
                         (String) movie.get("title"),
                         (String) movie.get("overview"),
                         (String) movie.get("poster_path"),
