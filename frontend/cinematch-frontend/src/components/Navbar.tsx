@@ -17,19 +17,21 @@ export default function Navbar() {
 
   return (
     <>
+      {/* NAVBAR */}
       <nav
         style={{
-          width: "100%",
+          width: "100vw",
+          maxWidth: "100%",
           height: "70px",
           backgroundColor: "#111",
-          padding: "15px 25px",
+          padding: "15px 20px",
           display: "flex",
           alignItems: "center",
-          gap: "25px",
+          justifyContent: "space-between",
           position: "fixed",
           top: 0,
           left: 0,
-          zIndex: 1000,
+          zIndex: 99999,
           borderBottom: "1px solid #222",
         }}
       >
@@ -43,14 +45,12 @@ export default function Navbar() {
           {isLoggedIn && <Link style={linkStyle} to="/profile">Profile</Link>}
         </div>
 
-        {/* RIGHT SIDE FOR DESKTOP */}
+        {/* RIGHT DESKTOP LINKS */}
         <div
           className="desktop-nav"
           style={{
-            marginLeft: "auto",
             display: "flex",
             gap: "15px",
-            paddingRight: "40px",
           }}
         >
           {!isLoggedIn ? (
@@ -63,7 +63,7 @@ export default function Navbar() {
               onClick={handleLogout}
               style={{
                 ...linkStyle,
-                backgroundColor: "transparent",
+                background: "transparent",
                 border: "none",
                 cursor: "pointer",
                 padding: 0,
@@ -78,65 +78,83 @@ export default function Navbar() {
         <div
           className="mobile-burger"
           style={{
-            marginLeft: "auto",
-            display: "none",
             fontSize: "28px",
             cursor: "pointer",
             color: "white",
           }}
-          onClick={() => setMobileOpen((prev) => !prev)}
+          onClick={() => setMobileOpen(true)}
         >
           ☰
         </div>
       </nav>
 
-      {/* MOBILE DROPDOWN MENU */}
+      {/* MOBILE OVERLAY */}
       {mobileOpen && (
         <div
-          className="mobile-menu"
+          onClick={() => setMobileOpen(false)}
           style={{
             position: "fixed",
-            top: "70px",
-            right: "15px",
-            width: "190px",
-            background: "#111",
-            border: "1px solid #333",
-            borderRadius: "8px",
-            zIndex: 999,
-            padding: "10px 0",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(0,0,0,0.45)",
+            zIndex: 99997,   // UNDER menu
           }}
-        >
-          <MobileItem to="/" close={setMobileOpen}>Home</MobileItem>
-          <MobileItem to="/search" close={setMobileOpen}>Search</MobileItem>
-          <MobileItem to="/trending" close={setMobileOpen}>Trending</MobileItem>
-          <MobileItem to="/quiz" close={setMobileOpen}>Quiz</MobileItem>
-          <MobileItem to="/leaderboard" close={setMobileOpen}>Leaderboard</MobileItem>
-
-          {isLoggedIn && (
-            <MobileItem to="/profile" close={setMobileOpen}>Profile</MobileItem>
-          )}
-
-          {!isLoggedIn ? (
-            <>
-              <MobileItem to="/login" close={setMobileOpen}>Login</MobileItem>
-              <MobileItem to="/register" close={setMobileOpen}>Register</MobileItem>
-            </>
-          ) : (
-            <div
-              onClick={handleLogout}
-              style={{
-                padding: "12px 18px",
-                color: "white",
-                fontSize: "16px",
-                borderBottom: "1px solid #222",
-                cursor: "pointer",
-              }}
-            >
-              Logout
-            </div>
-          )}
-        </div>
+        ></div>
       )}
+
+
+      {/* MOBILE SIDE MENU */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          right: mobileOpen ? 0 : "-70%",
+          height: "100vh",
+          width: "70%",
+          backgroundColor: "#111",
+          borderLeft: "1px solid #222",
+          paddingTop: "90px",
+          paddingLeft: "25px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "18px",
+          zIndex: 99998,   // ABOVE overlay
+          transition: "right 0.3s ease",
+        }}
+      >
+
+        <MobileItem to="/" close={setMobileOpen}>Home</MobileItem>
+        <MobileItem to="/search" close={setMobileOpen}>Search</MobileItem>
+        <MobileItem to="/trending" close={setMobileOpen}>Trending</MobileItem>
+        <MobileItem to="/quiz" close={setMobileOpen}>Quiz</MobileItem>
+        <MobileItem to="/leaderboard" close={setMobileOpen}>Leaderboard</MobileItem>
+
+        {isLoggedIn && (
+          <MobileItem to="/profile" close={setMobileOpen}>Profile</MobileItem>
+        )}
+
+        {!isLoggedIn ? (
+          <>
+            <MobileItem to="/login" close={setMobileOpen}>Login</MobileItem>
+            <MobileItem to="/register" close={setMobileOpen}>Register</MobileItem>
+          </>
+        ) : (
+          <div
+            onClick={handleLogout}
+            style={{
+              padding: "12px 4px",
+              color: "white",
+              fontSize: "18px",
+              cursor: "pointer",
+              borderBottom: "1px solid #222",
+            }}
+          >
+            Logout
+          </div>
+        )}
+      </div>
     </>
   );
 }
@@ -148,9 +166,9 @@ function MobileItem({ to, children, close }) {
       onClick={() => close(false)}
       style={{
         display: "block",
-        padding: "12px 18px",
+        padding: "12px 4px",
         color: "white",
-        fontSize: "16px",
+        fontSize: "18px",
         textDecoration: "none",
         borderBottom: "1px solid #222",
       }}
