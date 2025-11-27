@@ -1,7 +1,7 @@
 package com.cinematch.backend.controller;
 
-import com.cinematch.backend.dto.UpdateProfileRequest;
 import com.cinematch.backend.dto.UserProfileResponse;
+import com.cinematch.backend.dto.UserUpdateRequest;
 import com.cinematch.backend.model.User;
 import com.cinematch.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,20 +16,17 @@ public class UserController {
 
     private final UserRepository userRepository;
 
-    // ===========================================================
-    //                  GET /user/profile
-    // ===========================================================
     @GetMapping("/profile")
     public ResponseEntity<UserProfileResponse> getProfile(Authentication authentication) {
 
-        String email = authentication.getName();  // email from JWT
+        String email = authentication.getName();
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         UserProfileResponse response = new UserProfileResponse(
+                user.getUsername(),
                 user.getEmail(),
-                user.getUsername(),        // <-- now included
                 user.getRole().name(),
                 user.getQuizScore(),
                 user.getCreatedAt().toString()
@@ -38,35 +35,32 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/profile/update")
-    public ResponseEntity<?> updateProfile(
+
+    @PutMapping("/update")
+    public ResponseEntity<UserProfileResponse> updateUser(
             Authentication authentication,
-            @RequestBody UpdateProfileRequest request
+            @RequestBody UserUpdateRequest request
     ) {
-        String email = authentication.getName();  // current logged in user
+        String email = authentication.getName();
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
-            return ResponseEntity.badRequest().body("Email cannot be empty");
-        }
 
-        if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
-            return ResponseEntity.badRequest().body("Username cannot be empty");
-        }
-
-        if (!user.getEmail().equals(request.getEmail())) {
-            if (userRepository.existsByEmail(request.getEmail())) {
-                return ResponseEntity.badRequest().body("Email already in use");
-            }
-        }
-
-        user.setEmail(request.getEmail());
         user.setUsername(request.getUsername());
+
 
         userRepository.save(user);
 
-        return ResponseEntity.ok("Profile updated successfully");
+
+        UserProfileResponse response = new UserProfileResponse(
+                user.getUsername(),
+                user.getEmail(),
+                user.getRole().name(),
+                user.getQuizScore(),
+                user.getCreatedAt().toString()
+        );
+
+        return ResponseEntity.ok(response);
     }
 }

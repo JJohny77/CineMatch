@@ -29,6 +29,10 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    // ⭐ ΝΕΟ ΠΕΔΙΟ: Username του χρήστη
+    @Column(nullable = false)
+    private String username;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;

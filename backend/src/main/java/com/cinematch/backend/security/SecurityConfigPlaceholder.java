@@ -3,7 +3,6 @@ package com.cinematch.backend.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -19,36 +18,46 @@ public class SecurityConfigPlaceholder {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    // ✅ CORS configuration (σωστός τρόπος Spring Security 6+)
+    // =======================================================
+    // CORS CONFIG
+    // =======================================================
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://localhost:8080"
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
+
         return source;
     }
 
+    // =======================================================
+    // SECURITY FILTER CHAIN
+    // =======================================================
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
                 .csrf(csrf -> csrf.disable())
-
-                // ✅ ενεργοποίηση CORS μέσω Spring Security
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/health").permitAll()
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/quiz/**").authenticated()
-                        .requestMatchers("/user/**").hasRole("USER")
                         .requestMatchers("/movies/**").permitAll()
+                        .requestMatchers("/content/**").permitAll()   // <-- ALLOW UPLOAD
+                        .requestMatchers("/api/health").permitAll()
+                        .requestMatchers("/quiz/**").authenticated()
+                        .requestMatchers("/user/**").authenticated()
+                        .requestMatchers("/admin/**").authenticated()
                         .anyRequest().permitAll()
                 )
 

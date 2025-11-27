@@ -5,10 +5,11 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 public class UserProfileResponse {
 
+    private String username;
     private String email;
-    private String username;   // <-- ΝΕΟ πεδίο
     private String role;
     private Integer quizScore;
     private String createdAt;
