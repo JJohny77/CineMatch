@@ -11,7 +11,9 @@ type StartQuizResponse = {
 };
 
 type SubmitAnswerResponse = {
-  isCorrect: boolean; // προσαρμόζεται αν το backend στέλνει άλλο όνομα
+  isCorrect: boolean;
+  correctAnswer: string | null;
+  selectedAnswer: string | null;
 };
 
 const API_BASE_URL = "http://localhost:8080";
@@ -24,13 +26,14 @@ const QuizPage: React.FC = () => {
   const [score, setScore] = useState<number>(0);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [isAnswerCorrect, setIsAnswerCorrect] = useState<boolean | null>(null);
+  const [correctAnswer, setCorrectAnswer] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [hasStarted, setHasStarted] = useState<boolean>(false);
   const [isFinished, setIsFinished] = useState<boolean>(false);
   const [isSavingScore, setIsSavingScore] = useState<boolean>(false);
   const [saveMessage, setSaveMessage] = useState<string>("");
 
-  // 🔐 Αν δεν υπάρχει token → redirect σε login
+  // Redirect if no token
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -38,24 +41,23 @@ const QuizPage: React.FC = () => {
     }
   }, [navigate]);
 
-  const totalQuestions = questions.length || 10; // default 10 για το progress text
+  const totalQuestions = questions.length || 10;
 
-  // 🟢 Start Quiz
+  // ---------------------------
+  // START QUIZ
+  // ---------------------------
   async function handleStartQuiz() {
     const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login");
-      return;
-    }
+    if (!token) return navigate("/login");
 
     try {
       setHasStarted(true);
       setIsFinished(false);
-      setSaveMessage("");
       setScore(0);
       setCurrentIndex(0);
       setSelectedOption(null);
       setIsAnswerCorrect(null);
+      setCorrectAnswer(null);
 
       const response = await fetch(`${API_BASE_URL}/quiz/start`, {
         method: "POST",
@@ -63,19 +65,15 @@ const QuizPage: React.FC = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({}), // κενό body
+        body: JSON.stringify({}),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to start quiz");
-      }
+      if (!response.ok) throw new Error("Failed to start quiz");
 
       const data: StartQuizResponse = await response.json();
-      // backend επιστρέφει new QuizResponse(List<QuizQuestion>) -> πιθανό όνομα "questions"
-      const questionsFromBackend =
-        (data as any).questions ?? (data as any).quizQuestions ?? data;
+      const questionsList = (data as any).questions ?? data;
 
-      setQuestions(questionsFromBackend);
+      setQuestions(questionsList);
     } catch (err) {
       console.error(err);
       setHasStarted(false);
@@ -83,15 +81,14 @@ const QuizPage: React.FC = () => {
     }
   }
 
-  // 🟡 Submit Answer
+  // ---------------------------
+  // SUBMIT ANSWER
+  // ---------------------------
   async function handleSelectOption(option: string) {
     if (!questions[currentIndex] || isProcessing) return;
 
     const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login");
-      return;
-    }
+    if (!token) return navigate("/login");
 
     setIsProcessing(true);
     setSelectedOption(option);
@@ -111,51 +108,44 @@ const QuizPage: React.FC = () => {
         body: JSON.stringify(body),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to submit answer");
-      }
+      if (!response.ok) throw new Error("Failed to submit answer");
 
       const data: SubmitAnswerResponse = await response.json();
-      const correct =
-        (data as any).isCorrect ?? (data as any).correct ?? false;
 
-      setIsAnswerCorrect(correct);
-      if (correct) {
-        setScore((prev) => prev + 1);
-      }
+      setIsAnswerCorrect(data.isCorrect);
+      setCorrectAnswer(data.correctAnswer);
+      setSelectedOption(data.selectedAnswer);
 
-      // Μετά από 1 δευτερόλεπτο → επόμενη ερώτηση ή τελικό σκορ
+      if (data.isCorrect) setScore((prev) => prev + 1);
+
+      // Next question after delay
       setTimeout(() => {
-        const isLastQuestion =
-          currentIndex === questions.length - 1 || questions.length === 0;
-
-        if (isLastQuestion) {
-          finishQuiz(correct ? score + 1 : score);
+        if (currentIndex === questions.length - 1) {
+          finishQuiz(data.isCorrect ? score + 1 : score);
         } else {
           setCurrentIndex((prev) => prev + 1);
           setSelectedOption(null);
+          setCorrectAnswer(null);
           setIsAnswerCorrect(null);
           setIsProcessing(false);
         }
-      }, 1000);
+      }, 1100);
     } catch (err) {
       console.error(err);
-      alert("Could not submit answer. Please try again.");
+      alert("Could not submit answer. Try again.");
       setIsProcessing(false);
     }
   }
 
-  // 🔴 Finish Quiz & save score
+  // ---------------------------
+  // FINISH QUIZ
+  // ---------------------------
   async function finishQuiz(finalScore: number) {
     const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login");
-      return;
-    }
+    if (!token) return navigate("/login");
 
     setIsFinished(true);
     setIsSavingScore(true);
-    setIsProcessing(false);
 
     try {
       const response = await fetch(`${API_BASE_URL}/quiz/finish`, {
@@ -167,20 +157,17 @@ const QuizPage: React.FC = () => {
         body: JSON.stringify({ score: finalScore }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to save score");
-      }
+      if (!response.ok) throw new Error("Failed to save quiz score");
 
       setSaveMessage("Score saved!");
     } catch (err) {
       console.error(err);
-      setSaveMessage("Could not save score. Please try again later.");
+      setSaveMessage("Could not save score.");
     } finally {
       setIsSavingScore(false);
     }
   }
 
-  // 🔢 Progress helpers
   const currentQuestionNumber = Math.min(currentIndex + 1, totalQuestions);
   const progressPercent = hasStarted
     ? ((currentQuestionNumber - 1) / totalQuestions) * 100
@@ -197,7 +184,7 @@ const QuizPage: React.FC = () => {
     >
       <h1 style={{ fontSize: "36px", marginBottom: "20px" }}>Quiz</h1>
 
-      {/* Αν δεν έχει ξεκινήσει */}
+      {/* Start Screen */}
       {!hasStarted && !isFinished && (
         <div>
           <p style={{ marginBottom: "20px", fontSize: "18px" }}>
@@ -220,17 +207,12 @@ const QuizPage: React.FC = () => {
         </div>
       )}
 
-      {/* Εμφάνιση ερωτήσεων */}
+      {/* Quiz Questions */}
       {hasStarted && !isFinished && questions.length > 0 && (
         <div>
           {/* Progress bar */}
           <div style={{ marginBottom: "20px" }}>
-            <div
-              style={{
-                fontSize: "16px",
-                marginBottom: "8px",
-              }}
-            >
+            <div style={{ marginBottom: "8px", fontSize: "16px" }}>
               Question {currentQuestionNumber} of {totalQuestions}
             </div>
             <div
@@ -266,42 +248,60 @@ const QuizPage: React.FC = () => {
 
           {/* Options */}
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {questions[currentIndex].options.map((option) => {
-              const isSelected = option === selectedOption;
-              let background = "#222";
-              if (isSelected && isAnswerCorrect === true) {
-                background = "#1a7f37"; // πράσινο
-              } else if (isSelected && isAnswerCorrect === false) {
-                background = "#b81d24"; // κόκκινο
-              }
+                      {questions[currentIndex].options.map((option) => {
 
-              return (
-                <button
-                  key={option}
-                  onClick={() => handleSelectOption(option)}
-                  disabled={isProcessing}
-                  style={{
-                    textAlign: "left",
-                    width: "100%",
-                    padding: "12px 16px",
-                    fontSize: "16px",
-                    borderRadius: "6px",
-                    border: "1px solid #444",
-                    backgroundColor: background,
-                    color: "#fff",
-                    cursor: isProcessing ? "default" : "pointer",
-                    transition: "background-color 0.2s ease, transform 0.1s ease",
-                  }}
-                >
-                  {option}
-                </button>
-              );
-            })}
+                        const isUserChoice = option === selectedOption;
+                        const isCorrectOption = option === correctAnswer;
+
+                        let background = "#222"; // default
+
+                        if (isAnswerCorrect !== null) {
+                          // Αν απάντησε σωστά → μόνο πράσινη η επιλογή του χρήστη
+                          if (isAnswerCorrect && isUserChoice) {
+                            background = "#1a7f37"; // green
+                          }
+
+                          // Αν απάντησε λάθος:
+                          if (!isAnswerCorrect) {
+                            if (isUserChoice) {
+                              background = "#b81d24"; // red για τη λάθος επιλογή
+                            }
+                            if (isCorrectOption) {
+                              background = "#1a7f37"; // green για τη σωστή επιλογή
+                            }
+                          }
+                        }
+
+                        return (
+                          <button
+                            key={option}
+                            onClick={() => handleSelectOption(option)}
+                            disabled={isProcessing}
+                            style={{
+                              textAlign: "left",
+                              width: "100%",
+                              padding: "12px 16px",
+                              fontSize: "16px",
+                              borderRadius: "6px",
+                              border: "1px solid #444",
+                              backgroundColor: background,
+                              color: "#fff",
+                              cursor: isProcessing ? "default" : "pointer",
+                              transition: "0.2s ease",
+                            }}
+                          >
+                            {option}
+                          </button>
+                        );
+                      })}
+
+
+
           </div>
         </div>
       )}
 
-      {/* Τελικό σκορ */}
+      {/* Finished */}
       {isFinished && (
         <div style={{ marginTop: "30px" }}>
           <h2 style={{ fontSize: "28px", marginBottom: "10px" }}>
@@ -310,20 +310,20 @@ const QuizPage: React.FC = () => {
           <p style={{ fontSize: "20px", marginBottom: "10px" }}>
             Your score: <strong>{score}</strong> / {totalQuestions}
           </p>
-          <p style={{ fontSize: "16px", marginBottom: "20px" }}>
+          <p style={{ fontSize: "16px" }}>
             {isSavingScore ? "Saving score..." : saveMessage}
           </p>
 
-          <div style={{ display: "flex", gap: "12px", marginTop: "10px" }}>
+          <div style={{ display: "flex", gap: "12px", marginTop: "20px" }}>
             <button
               onClick={handleStartQuiz}
               style={{
                 padding: "10px 20px",
                 fontSize: "16px",
                 backgroundColor: "#e50914",
-                color: "#fff",
-                border: "none",
                 borderRadius: "6px",
+                border: "none",
+                color: "#fff",
                 cursor: "pointer",
               }}
             >
@@ -336,9 +336,9 @@ const QuizPage: React.FC = () => {
                 padding: "10px 20px",
                 fontSize: "16px",
                 backgroundColor: "#444",
-                color: "#fff",
-                border: "none",
                 borderRadius: "6px",
+                border: "none",
+                color: "#fff",
                 cursor: "pointer",
               }}
             >
