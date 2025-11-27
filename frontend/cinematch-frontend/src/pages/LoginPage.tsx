@@ -28,18 +28,11 @@ export default function LoginPage() {
       });
 
       const data = res.data;
-      // Υποστηρίζουμε και περίπτωση που backend γυρνάει string και περίπτωση με { token: ... }
-      const token =
-        typeof data === "string"
-          ? data
-          : data.token || data.accessToken || null;
+      const token = typeof data === "string" ? data : data.token || null;
 
-      if (!token) {
-        throw new Error("No token returned from server");
-      }
+      if (!token) throw new Error("No token returned");
 
       localStorage.setItem("token", token);
-      // καθαρίζουμε πιθανό παλιό user ώστε το /profile να φορτώσει φρέσκο
       localStorage.removeItem("user");
 
       navigate("/profile");
@@ -53,28 +46,26 @@ export default function LoginPage() {
 
   return (
     <div
-     style={{
-       height: "calc(100vh - 70px)",      // ύψος = όλη η οθόνη - navbar
-       display: "flex",
-       justifyContent: "center",          // οριζόντια κεντραρισμένα
-       alignItems: "center",              // κάθετα κεντραρισμένα
-       color: "white",
-       paddingTop: "20px",
-     }}
-
+      style={{
+        height: "calc(100vh - 70px)",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: "0 0px",
+        color: "white",
+      }}
     >
       <div
         style={{
           width: "100%",
-          maxWidth: "400px",
+          maxWidth: "420px",
           background: "#181818",
-          padding: "30px",
+          padding: "40px 32px",
           borderRadius: "12px",
           boxShadow: "0 4px 18px rgba(0,0,0,0.6)",
-          margin: "0 auto",
         }}
       >
-        <h1 style={{ marginBottom: "20px", fontSize: "28px", textAlign: "center" }}>
+        <h1 style={{ marginBottom: "25px", fontSize: "28px", textAlign: "center" }}>
           Login
         </h1>
 
@@ -86,6 +77,7 @@ export default function LoginPage() {
               borderRadius: "8px",
               background: "#3b1313",
               color: "#ffb3b3",
+              textAlign: "center",
               fontSize: "14px",
             }}
           >
@@ -123,8 +115,8 @@ export default function LoginPage() {
             type="submit"
             disabled={loading}
             style={{
-              marginTop: "10px",
-              padding: "10px",
+              width: "100%",
+              padding: "12px",
               borderRadius: "8px",
               border: "none",
               background: "#e50914",
@@ -165,4 +157,6 @@ const inputStyle: React.CSSProperties = {
   background: "#222",
   color: "white",
   fontSize: "14px",
+  boxSizing: "border-box", // 🔥 FIX
 };
+

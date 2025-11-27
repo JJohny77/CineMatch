@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class TrendingMovieDto {
 
+    private Long id;
     private String title;        // Τίτλος ταινίας
     private String overview;     // Περιγραφή
     private String posterPath;   // Poster URL

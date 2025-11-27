@@ -44,7 +44,7 @@ export default function ProfilePage() {
     <div
       style={{
         color: "white",
-        paddingTop: "0px",
+        paddingTop: "10px",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
