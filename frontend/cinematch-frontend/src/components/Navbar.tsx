@@ -1,33 +1,180 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import type React from "react";
+import { useState } from "react";
+import { logoutUser } from "../utils/auth";
 
 export default function Navbar() {
+  const navigate = useNavigate();
+  const isLoggedIn = !!localStorage.getItem("token");
+
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  function handleLogout() {
+    logoutUser();
+    navigate("/");
+    setMobileOpen(false);
+  }
+
   return (
-    <nav
+    <>
+      {/* NAVBAR */}
+      <nav
+        style={{
+          width: "100vw",
+          maxWidth: "100%",
+          height: "70px",
+          backgroundColor: "#111",
+          padding: "15px 20px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          position: "fixed",
+          top: 0,
+          left: 0,
+          zIndex: 99999,
+          borderBottom: "1px solid #222",
+        }}
+      >
+        {/* DESKTOP LINKS */}
+        <div className="desktop-nav" style={{ display: "flex", gap: "25px" }}>
+          <Link style={linkStyle} to="/">Home</Link>
+          <Link style={linkStyle} to="/search">Search</Link>
+          <Link style={linkStyle} to="/trending">Trending</Link>
+          <Link style={linkStyle} to="/quiz">Quiz</Link>
+          <Link style={linkStyle} to="/leaderboard">Leaderboard</Link>
+          {isLoggedIn && <Link style={linkStyle} to="/profile">Profile</Link>}
+        </div>
+
+        {/* RIGHT DESKTOP LINKS */}
+        <div
+          className="desktop-nav"
+          style={{
+            display: "flex",
+            gap: "15px",
+          }}
+        >
+          {!isLoggedIn ? (
+            <>
+              <Link style={linkStyle} to="/login">Login</Link>
+              <Link style={linkStyle} to="/register">Register</Link>
+            </>
+          ) : (
+            <button
+              onClick={handleLogout}
+              style={{
+                ...linkStyle,
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
+              Logout
+            </button>
+          )}
+        </div>
+
+        {/* MOBILE BURGER */}
+        <div
+          className="mobile-burger"
+          style={{
+            fontSize: "28px",
+            cursor: "pointer",
+            color: "white",
+          }}
+          onClick={() => setMobileOpen(true)}
+        >
+          ☰
+        </div>
+      </nav>
+
+      {/* MOBILE OVERLAY */}
+      {mobileOpen && (
+        <div
+          onClick={() => setMobileOpen(false)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(0,0,0,0.45)",
+            zIndex: 99997,   // UNDER menu
+          }}
+        ></div>
+      )}
+
+
+      {/* MOBILE SIDE MENU */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          right: mobileOpen ? 0 : "-70%",
+          height: "100vh",
+          width: "70%",
+          backgroundColor: "#111",
+          borderLeft: "1px solid #222",
+          paddingTop: "90px",
+          paddingLeft: "25px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "18px",
+          zIndex: 99998,   // ABOVE overlay
+          transition: "right 0.3s ease",
+        }}
+      >
+
+        <MobileItem to="/" close={setMobileOpen}>Home</MobileItem>
+        <MobileItem to="/search" close={setMobileOpen}>Search</MobileItem>
+        <MobileItem to="/trending" close={setMobileOpen}>Trending</MobileItem>
+        <MobileItem to="/quiz" close={setMobileOpen}>Quiz</MobileItem>
+        <MobileItem to="/leaderboard" close={setMobileOpen}>Leaderboard</MobileItem>
+
+        {isLoggedIn && (
+          <MobileItem to="/profile" close={setMobileOpen}>Profile</MobileItem>
+        )}
+
+        {!isLoggedIn ? (
+          <>
+            <MobileItem to="/login" close={setMobileOpen}>Login</MobileItem>
+            <MobileItem to="/register" close={setMobileOpen}>Register</MobileItem>
+          </>
+        ) : (
+          <div
+            onClick={handleLogout}
+            style={{
+              padding: "12px 4px",
+              color: "white",
+              fontSize: "18px",
+              cursor: "pointer",
+              borderBottom: "1px solid #222",
+            }}
+          >
+            Logout
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+function MobileItem({ to, children, close }) {
+  return (
+    <Link
+      to={to}
+      onClick={() => close(false)}
       style={{
-        width: "100%",
-        height: "70px",
-        backgroundColor: "#111",
-        padding: "15px 25px",
-        display: "flex",
-        alignItems: "center",
-        gap: "25px",
-        position: "fixed",
-        top: 0,
-        left: 0,
-        zIndex: 1000,
+        display: "block",
+        padding: "12px 4px",
+        color: "white",
+        fontSize: "18px",
+        textDecoration: "none",
         borderBottom: "1px solid #222",
       }}
     >
-      <Link style={linkStyle} to="/">Home</Link>
-      <Link style={linkStyle} to="/movies">Movies</Link>
-      <Link style={linkStyle} to="/trending">Trending</Link>
-      <Link style={linkStyle} to="/quiz">Quiz</Link>
-      <Link style={linkStyle} to="/profile">Profile</Link>
-
-      <div style={{ marginLeft: "auto" }}>
-        <Link style={linkStyle} to="/login">Login / Logout</Link>
-      </div>
-    </nav>
+      {children}
+    </Link>
   );
 }
 

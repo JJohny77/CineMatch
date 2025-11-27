@@ -4,6 +4,7 @@
 // Τύπος για κάθε trending movie
 // ----------------------------
 export type TrendingMovie = {
+  id: number;
   title: string;
   overview: string;
   posterPath: string;

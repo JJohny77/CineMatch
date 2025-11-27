@@ -139,7 +139,9 @@ public class TmdbService {
             List<TrendingMovieDto> output = new ArrayList<>();
 
             for (Map<String, Object> movie : results) {
+                Long id = ((Number) movie.get("id")).longValue();
                 TrendingMovieDto dto = new TrendingMovieDto(
+                        id,
                         (String) movie.get("title"),
                         (String) movie.get("overview"),
                         (String) movie.get("poster_path"),
@@ -271,5 +273,13 @@ public class TmdbService {
             throw new RuntimeException("Failed to load movie videos");
         }
     }
+    public String getPersonDetails(Long id) {
+        return fetchFromTmdb("/person/" + id, Map.of("language", "en-US"));
+    }
+
+    public String getPersonMovieCredits(Long id) {
+        return fetchFromTmdb("/person/" + id + "/movie_credits", Map.of("language", "en-US"));
+    }
 
 }
+
