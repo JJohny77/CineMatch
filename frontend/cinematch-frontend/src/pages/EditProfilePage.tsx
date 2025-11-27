@@ -18,9 +18,10 @@ export default function EditProfilePage() {
       const token = localStorage.getItem("token");
 
       const response = await axios.put(
-        "http://localhost:8080/user/update",
+        "http://localhost:8080/user/profile/update",
         {
           username: username,
+          email: user.email
         },
         {
           headers: {
