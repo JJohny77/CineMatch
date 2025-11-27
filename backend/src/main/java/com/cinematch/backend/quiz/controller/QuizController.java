@@ -21,7 +21,6 @@ public class QuizController {
     private final QuizService quizService;
     private final UserRepository userRepository;
 
-
     // ================================
     // US21 — Start Quiz
     // ================================
@@ -38,14 +37,25 @@ public class QuizController {
     public ResponseEntity<SubmitAnswerResponse> submitAnswer(
             @RequestBody SubmitAnswerRequest request
     ) {
-
         boolean isCorrect = quizService.checkAnswer(
                 request.getQuestion(),
                 request.getSelectedOption()
         );
 
-        return ResponseEntity.ok(new SubmitAnswerResponse(isCorrect));
+        // ΠΑΝΤΑ δίνουμε την πραγματική σωστή απάντηση
+        String correct = quizService.getCorrectAnswer(request.getQuestion());
+
+        return ResponseEntity.ok(
+                new SubmitAnswerResponse(
+                        isCorrect,
+                        request.getSelectedOption(),
+                        correct,
+                        true
+                )
+        );
     }
+
+
     @PostMapping("/finish")
     public ResponseEntity<FinishQuizResponse> finishQuiz(
             @RequestBody FinishQuizRequest request
@@ -55,15 +65,10 @@ public class QuizController {
     }
 
     // ================================
-// US24 — Leaderboard
-// ================================
+    // US24 — Leaderboard
+    // ================================
     @GetMapping("/leaderboard")
     public ResponseEntity<List<LeaderboardEntry>> getLeaderboard() {
-
-
         return ResponseEntity.ok(quizService.getLeaderboard(userRepository));
     }
-
-
-
 }

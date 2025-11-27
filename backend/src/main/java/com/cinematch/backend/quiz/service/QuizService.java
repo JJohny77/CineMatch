@@ -33,9 +33,13 @@ public class QuizService {
         // Μετατροπή σε "safe" QuizQuestion DTO (χωρίς σωστή απάντηση)
         List<QuizQuestion> safeQuestions = new ArrayList<>();
         for (FullQuestion fq : selected) {
+            List<String> shuffled = new ArrayList<>(fq.options());
+            Collections.shuffle(shuffled);
+
             safeQuestions.add(
-                    new QuizQuestion(fq.question(), fq.options())
+                    new QuizQuestion(fq.question(), shuffled)
             );
+
         }
 
         return new QuizResponse(safeQuestions);
@@ -56,6 +60,14 @@ public class QuizService {
 
         // Αν δεν βρέθηκε η ερώτηση (δεν θα συμβεί ποτέ στο demo)
         return false;
+    }
+    public String getCorrectAnswer(String question) {
+        for (FullQuestion fq : getFullQuestionPool()) {
+            if (fq.question().equals(question)) {
+                return fq.correctAnswer();
+            }
+        }
+        throw new RuntimeException("Question not found: " + question);
     }
 
 
