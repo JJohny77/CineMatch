@@ -20,18 +20,14 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
-    private String email;
-
     @Column(nullable = true)
     private String username;
 
+    @Column(nullable = false, unique = true)
+    private String email;
+
     @Column(nullable = false)
     private String password;
-
-    // ⭐ ΝΕΟ ΠΕΔΙΟ: Username του χρήστη
-    @Column(nullable = false)
-    private String username;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
