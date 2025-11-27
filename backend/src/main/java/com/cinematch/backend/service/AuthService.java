@@ -29,11 +29,14 @@ public class AuthService {
         User user = User.builder()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
+                .username(request.getUsername())   // ⭐ ΑΠΟΘΗΚΕΥΟΥΜΕ USERNAME
+                .quizScore(0)                      // προαιρετικό αλλά καλό
                 .role(Role.USER)
                 .build();
 
         userRepository.save(user);
     }
+
 
     // 🔥 ΝΕΑ ΜΕΘΟΔΟΣ LOGIN
     public String login(LoginRequest request) {
