@@ -18,27 +18,27 @@ import RegisterPage from "./pages/RegisterPage";
 const App: React.FC = () => {
   return (
     <BrowserRouter>
-      {/* NAVIGATION BAR */}
+      {/* NAVBAR is always full width */}
       <Navbar />
 
-      {/* MAIN CONTENT (ώστε να μην καλύπτεται από το navbar) */}
+      {/* MAIN CONTENT */}
       <div style={{ paddingTop: "100px" }}>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/movie/:id" element={<MovieDetailsPage />} />
-          <Route path="/search" element={<SearchPage />} />
-          <Route path="/trending" element={<TrendingPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/profile/edit" element={<EditProfilePage />} />
+        <div className="page-container">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/movie/:id" element={<MovieDetailsPage />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="/trending" element={<TrendingPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/profile/edit" element={<EditProfilePage />} />
 
-          {/* 👇 US31 – Quiz & Leaderboard routes */}
-          <Route path="/quiz" element={<QuizPage />} />
-          <Route path="/leaderboard" element={<LeaderboardPage />} />
+            <Route path="/quiz" element={<QuizPage />} />
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
 
-          {/* Auth routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-        </Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+          </Routes>
+        </div>
       </div>
     </BrowserRouter>
   );
