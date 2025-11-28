@@ -5,6 +5,8 @@ import com.cinematch.backend.service.KpiService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.cinematch.backend.dto.AudienceEngagementResponse;
+
 
 @RestController
 @RequestMapping("/kpi")
@@ -17,4 +19,11 @@ public class KpiController {
     public ResponseEntity<StarPowerResponse> getStarPower(@PathVariable Long actorId) {
         return ResponseEntity.ok(kpiService.calculateStarPower(actorId));
     }
+    @GetMapping("/audience-engagement/{movieId}")
+    public ResponseEntity<AudienceEngagementResponse> getAudienceEngagement(
+            @PathVariable Long movieId
+    ) {
+        return ResponseEntity.ok(kpiService.calculateAudienceEngagement(movieId));
+    }
+
 }

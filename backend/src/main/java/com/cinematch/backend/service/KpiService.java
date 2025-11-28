@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import com.cinematch.backend.dto.AudienceEngagementResponse;
+
 
 import java.util.List;
 import java.util.Map;
@@ -70,4 +72,50 @@ public class KpiService {
             throw new RuntimeException("Failed to compute Star Power Index");
         }
     }
+    public AudienceEngagementResponse calculateAudienceEngagement(Long movieId) {
+        try {
+            // 1️⃣ Call TMDb movie endpoint
+            String json = tmdbService.fetchFromTmdb(
+                    "/movie/" + movieId,
+                    Map.of("language", "en-US")
+            );
+
+            Map<String, Object> movie = objectMapper.readValue(json, Map.class);
+
+            // 2️⃣ Extract needed fields (with safe defaults)
+            int voteCount = movie.get("vote_count") != null
+                    ? ((Number) movie.get("vote_count")).intValue()
+                    : 0;
+
+            double voteAverage = movie.get("vote_average") != null
+                    ? ((Number) movie.get("vote_average")).doubleValue()
+                    : 0.0;
+
+            double popularity = movie.get("popularity") != null
+                    ? ((Number) movie.get("popularity")).doubleValue()
+                    : 0.0;
+
+            // 3️⃣ Normalization helpers
+            double normVoteCount = Math.min(1.0, voteCount / 50000.0);   // max 50k
+            double normPopularity = Math.min(1.0, popularity / 300.0);    // max 300
+
+            double normVoteAverage = voteAverage / 10.0; // since max is 10
+
+            // 4️⃣ Weighted formula (50/30/20)
+            double engagement =
+                    (normVoteCount * 50) +
+                            (normVoteAverage * 30) +
+                            (normPopularity * 20);
+
+            int finalScore = (int) Math.round(Math.min(100, engagement));
+
+            return new AudienceEngagementResponse(movieId, finalScore);
+
+        } catch (Exception e) {
+            logger.error("Failed to compute Audience Engagement for movie {}", movieId, e);
+            throw new RuntimeException("Failed to compute audience engagement score");
+        }
+    }
+
 }
+
