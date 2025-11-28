@@ -1,5 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import RecastPage from "./pages/RecastPage";
 
 import Navbar from "./components/Navbar";
 
@@ -34,6 +35,8 @@ const App: React.FC = () => {
 
             <Route path="/quiz" element={<QuizPage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
+
+             <Route path="/recast" element={<RecastPage />} />
 
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
