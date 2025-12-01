@@ -6,11 +6,9 @@ import net.bramp.ffmpeg.probe.FFmpegProbeResult;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.UUID;
+import java.nio.file.*;
 
 @Service
 public class ContentUploadService {
@@ -46,11 +44,8 @@ public class ContentUploadService {
             return new ContentUploadResponse("File type not allowed: " + extension, null, null, null, null);
         }
 
-        // safe random filename
-        String randomId = UUID.randomUUID().toString();
-        String safeFilename = randomId + "_" + originalName;
+        String safeFilename = java.util.UUID.randomUUID() + "_" + originalName;
 
-        // determine save location
         String targetDir = isImage ? IMAGE_DIR : VIDEO_DIR;
         Path uploadPath = Paths.get(targetDir);
         Path fullPath = uploadPath.resolve(safeFilename);
@@ -64,7 +59,6 @@ public class ContentUploadService {
 
         Double duration = null;
 
-        // If video: validate duration
         if (isVideo) {
             duration = getVideoDurationInSeconds(fullPath);
 
@@ -79,7 +73,6 @@ public class ContentUploadService {
             }
         }
 
-        // success response
         return new ContentUploadResponse(
                 "success",
                 safeFilename,
@@ -89,13 +82,28 @@ public class ContentUploadService {
         );
     }
 
+    // ============================
+    // DELETE CONTENT (WORKING)
+    // ============================
+    public boolean deleteContent(String filename) {
+
+        File img = new File(IMAGE_DIR + filename);
+        if (img.exists()) {
+            return img.delete();
+        }
+
+        File vid = new File(VIDEO_DIR + filename);
+        if (vid.exists()) {
+            return vid.delete();
+        }
+
+        return false;
+    }
+
     private void deleteQuietly(Path p) {
         try { Files.deleteIfExists(p); } catch (Exception ignored) {}
     }
 
-    // ===========================
-    // FFmpeg duration reader
-    // ===========================
     private double getVideoDurationInSeconds(Path path) {
         try {
             FFprobe ffprobe = new FFprobe("C:\\ffmpeg\\bin\\ffprobe.exe");
