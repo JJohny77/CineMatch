@@ -1,5 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import RecastPage from "./pages/RecastPage";
 
 import Navbar from "./components/Navbar";
 
@@ -14,6 +15,8 @@ import QuizPage from "./pages/QuizPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import UploadPage from "./pages/UploadPage";
+import GalleryPage from "./pages/GalleryPage";   // <-- NEW IMPORT
 
 const App: React.FC = () => {
   return (
@@ -35,8 +38,14 @@ const App: React.FC = () => {
             <Route path="/quiz" element={<QuizPage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
 
+             <Route path="/recast" element={<RecastPage />} />
+
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+
+            <Route path="/upload" element={<UploadPage />} />
+
+            <Route path="/gallery" element={<GalleryPage />} /> {/* <-- NEW ROUTE */}
           </Routes>
         </div>
       </div>
