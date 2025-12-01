@@ -14,6 +14,8 @@ import QuizPage from "./pages/QuizPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import UploadPage from "./pages/UploadPage";
+import GalleryPage from "./pages/GalleryPage";   // <-- NEW IMPORT
 
 const App: React.FC = () => {
   return (
@@ -37,6 +39,10 @@ const App: React.FC = () => {
 
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+
+            <Route path="/upload" element={<UploadPage />} />
+
+            <Route path="/gallery" element={<GalleryPage />} /> {/* <-- NEW ROUTE */}
           </Routes>
         </div>
       </div>
