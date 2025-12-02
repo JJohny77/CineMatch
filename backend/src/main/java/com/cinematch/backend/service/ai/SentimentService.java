@@ -18,7 +18,6 @@ public class SentimentService {
     @Value("${HUGGINGFACE_API_KEY}")
     private String apiKey;
 
-    // 🔥 ΣΩΣΤΟ router endpoint (όπως στο Postman)
     private static final String MODEL_URL =
             "https://router.huggingface.co/hf-inference/models/distilbert/distilbert-base-uncased-finetuned-sst-2-english";
 
@@ -31,7 +30,12 @@ public class SentimentService {
         // ---- 2. Headers ----
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(apiKey);   // Authorization: Bearer hf_xxx
+
+        // Required fixes for HuggingFace Router
+        headers.set(HttpHeaders.ACCEPT, "application/json");
+        headers.add("X-Response-Format", "json");
+
+        headers.setBearerAuth(apiKey);
 
         HttpEntity<String> request = new HttpEntity<>(payload.toString(), headers);
 
@@ -49,30 +53,39 @@ public class SentimentService {
             throw new IllegalStateException("Empty response from HuggingFace");
         }
 
-        // ---- 4. Model loading state ----
         if (body.contains("\"estimated_time\"") || body.contains("\"error\"")) {
             return new SentimentResponse("loading", 0.0);
         }
 
-        // ---- 5. Parse ----
+        // ---- 4. Parse JSON ----
         JSONArray arr = new JSONArray(body);
-
-        // Η δική σου response είναι flat array: [ {label, score}, {...} ]
         JSONObject bestLabelObj;
 
         Object first = arr.get(0);
+
         if (first instanceof JSONObject) {
             bestLabelObj = (JSONObject) first;
+
         } else if (first instanceof JSONArray) {
-            // nested case: [ [ {label, score}, ... ] ]
             bestLabelObj = ((JSONArray) first).getJSONObject(0);
+
         } else {
-            throw new IllegalStateException("Unknown HF response format: " + body);
+            throw new IllegalStateException("Unknown HF format: " + body);
         }
 
-        String label = bestLabelObj.getString("label").toLowerCase();
+        String rawLabel = bestLabelObj.getString("label").toLowerCase(); // positive or negative
         double score = bestLabelObj.getDouble("score");
 
-        return new SentimentResponse(label, score);
+        // ---- 5. Neutral Logic ----
+        // SST-2 is binary → low confidence = neutral
+        String finalLabel;
+
+        if (score < 0.60) {
+            finalLabel = "neutral";
+        } else {
+            finalLabel = rawLabel; // "positive" or "negative"
+        }
+
+        return new SentimentResponse(finalLabel, score);
     }
 }
