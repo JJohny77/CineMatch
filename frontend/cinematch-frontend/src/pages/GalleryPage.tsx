@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 interface ContentItem {
   filename: string;
@@ -10,20 +12,22 @@ const GalleryPage: React.FC = () => {
   const [items, setItems] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 🔥 Lightbox state
   const [previewItem, setPreviewItem] = useState<ContentItem | null>(null);
-
-  // 🔥 Delete confirmation modal state
   const [deleteTarget, setDeleteTarget] = useState<ContentItem | null>(null);
 
-  // ==============================
-  // FETCH CONTENT LIST
-  // ==============================
-  async function loadContent() {
+  const navigate = useNavigate();
+
+  async function loadContent(token: string) {
     try {
-      const response = await fetch("http://localhost:8080/content/list");
-      const data = await response.json();
-      setItems(data);
+      const response = await axios.get(
+        "http://localhost:8080/content/list",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setItems(response.data);
     } catch (error) {
       console.error("Failed to load gallery", error);
     } finally {
@@ -32,10 +36,14 @@ const GalleryPage: React.FC = () => {
   }
 
   useEffect(() => {
-    loadContent();
-  }, []);
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+    loadContent(token);
+  }, [navigate]);
 
-  // 🔥 ESC closes lightbox
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setPreviewItem(null);
@@ -44,23 +52,30 @@ const GalleryPage: React.FC = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // ==============================
-  // DELETE HANDLER
-  // ==============================
   async function deleteItem(filename: string) {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
     try {
-      const response = await fetch(
+      const response = await axios.delete(
         "http://localhost:8080/content/delete/" + filename,
-        { method: "DELETE" }
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
-      if (!response.ok) {
+      if (response.status !== 200) {
         alert("Failed to delete file.");
         return;
       }
 
-      await loadContent();
-      setDeleteTarget(null); // close modal
+      await loadContent(token);
+      setDeleteTarget(null);
     } catch (err) {
       console.error(err);
       alert("Error deleting file.");
@@ -69,12 +84,11 @@ const GalleryPage: React.FC = () => {
 
   return (
     <div style={{ padding: "20px", color: "white" }}>
-      <h1>Content Gallery</h1>
+      <h1>My Gallery</h1>
 
       {loading && <p>Loading...</p>}
       {!loading && items.length === 0 && <p>No uploaded content found.</p>}
 
-      {/* GRID */}
       <div
         style={{
           marginTop: "20px",
@@ -97,11 +111,10 @@ const GalleryPage: React.FC = () => {
               position: "relative",
             }}
           >
-            {/* DELETE BUTTON */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setDeleteTarget(item); // open modal
+                setDeleteTarget(item);
               }}
               style={{
                 position: "absolute",
@@ -120,7 +133,6 @@ const GalleryPage: React.FC = () => {
               ✕
             </button>
 
-            {/* FIXED PREVIEW WRAPPER */}
             <div
               style={{
                 width: "100%",
@@ -164,7 +176,6 @@ const GalleryPage: React.FC = () => {
         ))}
       </div>
 
-      {/* 🔥 DELETE CONFIRMATION MODAL */}
       {deleteTarget && (
         <div
           style={{
@@ -235,7 +246,6 @@ const GalleryPage: React.FC = () => {
         </div>
       )}
 
-      {/* 🔥 FULLSCREEN LIGHTBOX PREVIEW */}
       {previewItem && (
         <div
           onClick={() => setPreviewItem(null)}

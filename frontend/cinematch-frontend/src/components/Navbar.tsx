@@ -45,6 +45,12 @@ export default function Navbar() {
           <Link style={linkStyle} to="/leaderboard">Leaderboard</Link>
           <Link style={linkStyle} to="/recast">Recast-It</Link>
           {isLoggedIn && <Link style={linkStyle} to="/profile">Profile</Link>}
+          {isLoggedIn && (
+            <>
+              <Link style={linkStyle} to="/upload">Upload</Link>
+              <Link style={linkStyle} to="/gallery">My Gallery</Link>
+            </>
+          )}
         </div>
 
         {/* RIGHT DESKTOP LINKS */}
@@ -134,8 +140,12 @@ export default function Navbar() {
         <MobileItem to="/recast" close={setMobileOpen}>Recast-It</MobileItem>
 
         {isLoggedIn && (
-          <MobileItem to="/profile" close={setMobileOpen}>Profile</MobileItem>
-        )}
+           <>
+             <MobileItem to="/profile" close={setMobileOpen}>Profile</MobileItem>
+             <MobileItem to="/upload" close={setMobileOpen}>Upload</MobileItem>
+             <MobileItem to="/gallery" close={setMobileOpen}>My Gallery</MobileItem>
+           </>
+         )}
 
         {!isLoggedIn ? (
           <>
