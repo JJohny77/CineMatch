@@ -15,7 +15,7 @@ public class SentimentService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    @Value("${HUGGINGFACE_API_KEY}")
+    @Value("${huggingface.api.key:}")
     private String apiKey;
 
     private static final String MODEL_URL =

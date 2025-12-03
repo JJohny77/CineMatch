@@ -53,8 +53,8 @@ public class SecurityConfigPlaceholder {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/movies/**").permitAll()
-                        .requestMatchers("/content/**").permitAll()   // <-- ALLOW UPLOAD
                         .requestMatchers("/api/health").permitAll()
+                        .requestMatchers("/content/**").authenticated()   // <-- ALLOW UPLOAD
                         .requestMatchers("/quiz/**").authenticated()
                         .requestMatchers("/user/**").authenticated()
                         .requestMatchers("/admin/**").authenticated()
