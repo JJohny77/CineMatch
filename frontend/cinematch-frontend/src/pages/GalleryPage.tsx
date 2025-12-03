@@ -10,22 +10,26 @@ const GalleryPage: React.FC = () => {
   const [items, setItems] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 🔥 Lightbox state
-  const [previewItem, setPreviewItem] = useState<ContentItem | null>(null);
+  const token = localStorage.getItem("token");
 
-  // 🔥 Delete confirmation modal state
-  const [deleteTarget, setDeleteTarget] = useState<ContentItem | null>(null);
-
-  // ==============================
-  // FETCH CONTENT LIST
-  // ==============================
   async function loadContent() {
     try {
-      const response = await fetch("http://localhost:8080/content/list");
+      const response = await fetch("http://localhost:8080/content/my-uploads", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.error("Failed to load gallery");
+        setItems([]);
+        return;
+      }
+
       const data = await response.json();
       setItems(data);
-    } catch (error) {
-      console.error("Failed to load gallery", error);
+    } catch (err) {
+      console.error("Gallery error:", err);
     } finally {
       setLoading(false);
     }
@@ -35,46 +39,13 @@ const GalleryPage: React.FC = () => {
     loadContent();
   }, []);
 
-  // 🔥 ESC closes lightbox
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setPreviewItem(null);
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
-  // ==============================
-  // DELETE HANDLER
-  // ==============================
-  async function deleteItem(filename: string) {
-    try {
-      const response = await fetch(
-        "http://localhost:8080/content/delete/" + filename,
-        { method: "DELETE" }
-      );
-
-      if (!response.ok) {
-        alert("Failed to delete file.");
-        return;
-      }
-
-      await loadContent();
-      setDeleteTarget(null); // close modal
-    } catch (err) {
-      console.error(err);
-      alert("Error deleting file.");
-    }
-  }
-
   return (
     <div style={{ padding: "20px", color: "white" }}>
-      <h1>Content Gallery</h1>
+      <h1>My Gallery</h1>
 
       {loading && <p>Loading...</p>}
       {!loading && items.length === 0 && <p>No uploaded content found.</p>}
 
-      {/* GRID */}
       <div
         style={{
           marginTop: "20px",
@@ -83,216 +54,37 @@ const GalleryPage: React.FC = () => {
           gap: "20px",
         }}
       >
-        {items.map((item, index) => (
+        {items.map((item) => (
           <div
-            key={index}
-            onClick={() => setPreviewItem(item)}
+            key={item.filename}
             style={{
               backgroundColor: "#111",
-              borderRadius: "10px",
               padding: "10px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
-              cursor: "pointer",
-              border: "1px solid #333",
-              position: "relative",
-            }}
-          >
-            {/* DELETE BUTTON */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setDeleteTarget(item); // open modal
-              }}
-              style={{
-                position: "absolute",
-                top: "8px",
-                right: "8px",
-                background: "rgba(255,0,0,0.75)",
-                border: "none",
-                padding: "6px 10px",
-                borderRadius: "6px",
-                color: "white",
-                cursor: "pointer",
-                fontWeight: "bold",
-                zIndex: 20,
-              }}
-            >
-              ✕
-            </button>
-
-            {/* FIXED PREVIEW WRAPPER */}
-            <div
-              style={{
-                width: "100%",
-                height: "200px",
-                backgroundColor: "#000",
-                borderRadius: "8px",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                overflow: "hidden",
-              }}
-            >
-              {item.type === "image" ? (
-                <img
-                  src={"http://localhost:8080" + item.url}
-                  alt={item.filename}
-                  style={{
-                    maxWidth: "100%",
-                    maxHeight: "100%",
-                    objectFit: "contain",
-                  }}
-                />
-              ) : (
-                <video
-                  src={"http://localhost:8080" + item.url}
-                  muted
-                  style={{
-                    maxWidth: "100%",
-                    maxHeight: "100%",
-                    objectFit: "contain",
-                    backgroundColor: "#000",
-                  }}
-                />
-              )}
-            </div>
-
-            <p style={{ fontSize: "14px", marginTop: "8px", color: "#bbb" }}>
-              {item.filename}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* 🔥 DELETE CONFIRMATION MODAL */}
-      {deleteTarget && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(0,0,0,0.7)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 200000,
-          }}
-          onClick={() => setDeleteTarget(null)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "#181818",
-              padding: "30px",
               borderRadius: "10px",
-              width: "90%",
-              maxWidth: "400px",
-              textAlign: "center",
-              border: "1px solid #333",
             }}
           >
-            <h2 style={{ color: "white", marginBottom: "20px" }}>
-              Delete "{deleteTarget.filename}"?
-            </h2>
-
-            <p style={{ color: "#bbb", marginBottom: "25px" }}>
-              Are you sure you want to delete this file?
-            </p>
-
-            <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
-              <button
-                onClick={() => setDeleteTarget(null)}
-                style={{
-                  padding: "10px 20px",
-                  background: "#555",
-                  border: "none",
-                  borderRadius: "6px",
-                  color: "white",
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={() => deleteItem(deleteTarget.filename)}
-                style={{
-                  padding: "10px 20px",
-                  background: "#E50914",
-                  border: "none",
-                  borderRadius: "6px",
-                  color: "white",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 🔥 FULLSCREEN LIGHTBOX PREVIEW */}
-      {previewItem && (
-        <div
-          onClick={() => setPreviewItem(null)}
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(0,0,0,0.85)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 100000,
-            padding: "20px",
-          }}
-        >
-          <div onClick={(e) => e.stopPropagation()}>
-            {previewItem.type === "image" ? (
+            {item.type === "image" ? (
               <img
-                src={"http://localhost:8080" + previewItem.url}
+                src={"http://localhost:8080" + item.url}
                 style={{
-                  maxWidth: "90vw",
-                  maxHeight: "90vh",
+                  width: "100%",
                   borderRadius: "10px",
+                  objectFit: "cover",
                 }}
               />
             ) : (
               <video
-                src={"http://localhost:8080" + previewItem.url}
+                src={"http://localhost:8080" + item.url}
                 controls
-                autoPlay
                 style={{
-                  maxWidth: "90vw",
-                  maxHeight: "90vh",
+                  width: "100%",
                   borderRadius: "10px",
                 }}
-              />
+              ></video>
             )}
           </div>
-
-          <div
-            onClick={() => setPreviewItem(null)}
-            style={{
-              position: "fixed",
-              top: "20px",
-              right: "30px",
-              fontSize: "32px",
-              color: "white",
-              cursor: "pointer",
-              fontWeight: "bold",
-            }}
-          >
-            ✕
-          </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 };

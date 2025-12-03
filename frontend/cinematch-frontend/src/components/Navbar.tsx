@@ -35,7 +35,6 @@ export default function Navbar() {
           borderBottom: "1px solid #222",
         }}
       >
-
         {/* DESKTOP LINKS */}
         <div className="desktop-nav" style={{ display: "flex", gap: "25px" }}>
           <Link style={linkStyle} to="/">Home</Link>
@@ -44,7 +43,14 @@ export default function Navbar() {
           <Link style={linkStyle} to="/quiz">Quiz</Link>
           <Link style={linkStyle} to="/leaderboard">Leaderboard</Link>
           <Link style={linkStyle} to="/recast">Recast-It</Link>
-          {isLoggedIn && <Link style={linkStyle} to="/profile">Profile</Link>}
+
+          {isLoggedIn && (
+            <>
+              <Link style={linkStyle} to="/upload">Upload</Link>
+              <Link style={linkStyle} to="/gallery">My Gallery</Link>
+              <Link style={linkStyle} to="/profile">Profile</Link>
+            </>
+          )}
         </div>
 
         {/* RIGHT DESKTOP LINKS */}
@@ -125,7 +131,6 @@ export default function Navbar() {
           transition: "right 0.3s ease",
         }}
       >
-
         <MobileItem to="/" close={setMobileOpen}>Home</MobileItem>
         <MobileItem to="/search" close={setMobileOpen}>Search</MobileItem>
         <MobileItem to="/trending" close={setMobileOpen}>Trending</MobileItem>
@@ -134,7 +139,11 @@ export default function Navbar() {
         <MobileItem to="/recast" close={setMobileOpen}>Recast-It</MobileItem>
 
         {isLoggedIn && (
-          <MobileItem to="/profile" close={setMobileOpen}>Profile</MobileItem>
+          <>
+            <MobileItem to="/upload" close={setMobileOpen}>Upload</MobileItem>
+            <MobileItem to="/gallery" close={setMobileOpen}>My Gallery</MobileItem>
+            <MobileItem to="/profile" close={setMobileOpen}>Profile</MobileItem>
+          </>
         )}
 
         {!isLoggedIn ? (

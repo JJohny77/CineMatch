@@ -9,7 +9,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/content")
@@ -20,7 +21,7 @@ public class ContentUploadController {
     private final ContentUploadService contentUploadService;
 
     // =========================================
-    // UPLOAD ENDPOINT
+    // UPLOAD (USER-SCOPED)
     // =========================================
     @PostMapping("/upload")
     public ResponseEntity<ContentUploadResponse> uploadContent(
@@ -28,59 +29,24 @@ public class ContentUploadController {
 
         ContentUploadResponse res = contentUploadService.handleUpload(file);
 
-        if (res.getStatus().equals("success")) {
+        if ("success".equals(res.getStatus())) {
             return ResponseEntity.ok(res);
         }
 
         return ResponseEntity.badRequest().body(res);
     }
 
-    @GetMapping("/test")
-    public String test() {
-        return "Content Upload API is working!";
-    }
-
     // =========================================
-    // LIST CONTENT
+    // PERSONAL GALLERY (ONLY MY FILES)
     // =========================================
-    @GetMapping("/list")
-    public ResponseEntity<List<Map<String, String>>> listContent() {
-
-        List<Map<String, String>> result = new ArrayList<>();
-
-        // IMAGE DIRECTORY
-        File imageDir = new File("C:\\CineMatch\\backend\\uploads\\images\\");
-        if (imageDir.exists()) {
-            for (File f : Objects.requireNonNull(imageDir.listFiles())) {
-                if (!f.isDirectory()) {
-                    Map<String, String> item = new HashMap<>();
-                    item.put("filename", f.getName());
-                    item.put("type", "image");
-                    item.put("url", "/uploads/images/" + f.getName());
-                    result.add(item);
-                }
-            }
-        }
-
-        // VIDEO DIRECTORY
-        File videoDir = new File("C:\\CineMatch\\backend\\uploads\\videos\\");
-        if (videoDir.exists()) {
-            for (File f : Objects.requireNonNull(videoDir.listFiles())) {
-                if (!f.isDirectory()) {
-                    Map<String, String> item = new HashMap<>();
-                    item.put("filename", f.getName());
-                    item.put("type", "video");
-                    item.put("url", "/uploads/videos/" + f.getName());
-                    result.add(item);
-                }
-            }
-        }
-
+    @GetMapping("/my-uploads")
+    public ResponseEntity<List<Map<String, Object>>> getMyUploads() {
+        List<Map<String, Object>> result = contentUploadService.listUserUploads();
         return ResponseEntity.ok(result);
     }
 
     // =========================================
-    // DELETE CONTENT
+    // DELETE (USER-SCOPED)
     // =========================================
     @DeleteMapping("/delete/{filename}")
     public ResponseEntity<String> deleteContent(@PathVariable String filename) {
@@ -95,19 +61,13 @@ public class ContentUploadController {
     }
 
     // =========================================
-    // DOWNLOAD CONTENT
+    // DOWNLOAD (RECURSIVE SEARCH)
     // =========================================
     @GetMapping("/download/{filename}")
     public ResponseEntity<?> downloadFile(@PathVariable String filename) {
 
-        String imagePath = "C:\\CineMatch\\backend\\uploads\\images\\" + filename;
-        String videoPath = "C:\\CineMatch\\backend\\uploads\\videos\\" + filename;
-
-        File imageFile = new File(imagePath);
-        File videoFile = new File(videoPath);
-
-        File target = imageFile.exists() ? imageFile :
-                videoFile.exists() ? videoFile : null;
+        File root = new File("C:\\CineMatch\\backend\\uploads");
+        File target = findRecursively(root, filename);
 
         if (target == null) {
             return ResponseEntity.status(404).body("File not found");
@@ -116,5 +76,24 @@ public class ContentUploadController {
         return ResponseEntity.ok()
                 .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
                 .body(new FileSystemResource(target));
+    }
+
+    // Recursive helper: finds files inside any user folder
+    private File findRecursively(File dir, String filename) {
+        File[] files = dir.listFiles();
+        if (files == null) return null;
+
+        for (File f : files) {
+            if (f.isDirectory()) {
+                File found = findRecursively(f, filename);
+                if (found != null) return found;
+            } else {
+                if (f.getName().equals(filename)) {
+                    return f;
+                }
+            }
+        }
+
+        return null;
     }
 }

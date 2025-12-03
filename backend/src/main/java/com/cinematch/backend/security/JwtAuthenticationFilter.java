@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -30,7 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        // 1. Πάρε το Authorization header
+        // Get Authorization header
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -38,28 +37,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 2. Πάρε το token
+        // Extract token
         String token = authHeader.substring(7);
 
-        // 3. Έλεγχος valid token
+        // Validate token
         if (!jwtUtil.validateToken(token)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 4. Πάρε email από το token
+        // Extract user info
         String email = jwtUtil.extractEmail(token);
-
-        // 5. Πάρε role από το token
         String role = jwtUtil.extractRole(token);
-
 
         var authorities = Collections.singletonList(
                 new SimpleGrantedAuthority("ROLE_" + role)
         );
 
-
-// 7. Φτιάξε authentication object με authorities
+        // Create auth object
         UsernamePasswordAuthenticationToken authToken =
                 new UsernamePasswordAuthenticationToken(
                         email,
@@ -67,10 +62,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         authorities
                 );
 
-        // 8. Βάλε τον χρήστη στο SecurityContext
+        // 🔥 CRITICAL FIX — sets details so Spring accepts the authentication
+        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+        // 🔥 Store authentication in SecurityContext
         SecurityContextHolder.getContext().setAuthentication(authToken);
 
         filterChain.doFilter(request, response);
     }
 }
-

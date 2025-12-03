@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import RecastPage from "./pages/RecastPage";
 
 import Navbar from "./components/Navbar";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 import HomePage from "./pages/HomePage";
 import MovieDetailsPage from "./pages/MovieDetailsPage";
@@ -16,7 +17,7 @@ import LeaderboardPage from "./pages/LeaderboardPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import UploadPage from "./pages/UploadPage";
-import GalleryPage from "./pages/GalleryPage";   // <-- NEW IMPORT
+import GalleryPage from "./pages/GalleryPage";
 
 const App: React.FC = () => {
   return (
@@ -38,14 +39,29 @@ const App: React.FC = () => {
             <Route path="/quiz" element={<QuizPage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
 
-             <Route path="/recast" element={<RecastPage />} />
+            <Route path="/recast" element={<RecastPage />} />
 
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
 
-            <Route path="/upload" element={<UploadPage />} />
+            {/* 🔒 PROTECTED ROUTES */}
+            <Route
+              path="/upload"
+              element={
+                <ProtectedRoute>
+                  <UploadPage />
+                </ProtectedRoute>
+              }
+            />
 
-            <Route path="/gallery" element={<GalleryPage />} /> {/* <-- NEW ROUTE */}
+            <Route
+              path="/gallery"
+              element={
+                <ProtectedRoute>
+                  <GalleryPage />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </div>
       </div>
