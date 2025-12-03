@@ -1,16 +1,18 @@
 package com.cinematch.backend.controller.upload;
 
 import com.cinematch.backend.dto.ContentUploadResponse;
+import com.cinematch.backend.model.User;
+import com.cinematch.backend.repository.UserRepository;
 import com.cinematch.backend.service.upload.ContentUploadService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @RestController
 @RequestMapping("/content")
@@ -19,15 +21,29 @@ import java.util.Map;
 public class ContentUploadController {
 
     private final ContentUploadService contentUploadService;
+    private final UserRepository userRepository;
 
     // =========================================
-    // UPLOAD (USER-SCOPED)
+    // helper: παίρνουμε userId από Authentication
+    // =========================================
+    private Long getCurrentUserId(Authentication authentication) {
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return user.getId();
+    }
+
+    // =========================================
+    // UPLOAD ENDPOINT (per user)
     // =========================================
     @PostMapping("/upload")
     public ResponseEntity<ContentUploadResponse> uploadContent(
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication) {
 
-        ContentUploadResponse res = contentUploadService.handleUpload(file);
+        Long userId = getCurrentUserId(authentication);
+
+        ContentUploadResponse res = contentUploadService.handleUpload(file, userId);
 
         if ("success".equals(res.getStatus())) {
             return ResponseEntity.ok(res);
@@ -36,22 +52,33 @@ public class ContentUploadController {
         return ResponseEntity.badRequest().body(res);
     }
 
+    @GetMapping("/test")
+    public String test() {
+        return "Content Upload API is working!";
+    }
+
     // =========================================
-    // PERSONAL GALLERY (ONLY MY FILES)
+    // LIST CONTENT (current user only)
     // =========================================
-    @GetMapping("/my-uploads")
-    public ResponseEntity<List<Map<String, Object>>> getMyUploads() {
-        List<Map<String, Object>> result = contentUploadService.listUserUploads();
+    @GetMapping("/list")
+    public ResponseEntity<List<Map<String, String>>> listContent(Authentication authentication) {
+
+        Long userId = getCurrentUserId(authentication);
+
+        List<Map<String, String>> result = contentUploadService.listUserContent(userId);
         return ResponseEntity.ok(result);
     }
 
     // =========================================
-    // DELETE (USER-SCOPED)
+    // DELETE CONTENT (current user only)
     // =========================================
     @DeleteMapping("/delete/{filename}")
-    public ResponseEntity<String> deleteContent(@PathVariable String filename) {
+    public ResponseEntity<String> deleteContent(
+            @PathVariable String filename,
+            Authentication authentication) {
 
-        boolean deleted = contentUploadService.deleteContent(filename);
+        Long userId = getCurrentUserId(authentication);
+        boolean deleted = contentUploadService.deleteContent(userId, filename);
 
         if (deleted) {
             return ResponseEntity.ok("Deleted");
@@ -61,13 +88,15 @@ public class ContentUploadController {
     }
 
     // =========================================
-    // DOWNLOAD (RECURSIVE SEARCH)
+    // DOWNLOAD CONTENT (current user only)
     // =========================================
     @GetMapping("/download/{filename}")
-    public ResponseEntity<?> downloadFile(@PathVariable String filename) {
+    public ResponseEntity<?> downloadFile(
+            @PathVariable String filename,
+            Authentication authentication) {
 
-        File root = new File("C:\\CineMatch\\backend\\uploads");
-        File target = findRecursively(root, filename);
+        Long userId = getCurrentUserId(authentication);
+        File target = contentUploadService.findUserFile(userId, filename);
 
         if (target == null) {
             return ResponseEntity.status(404).body("File not found");
@@ -76,24 +105,5 @@ public class ContentUploadController {
         return ResponseEntity.ok()
                 .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
                 .body(new FileSystemResource(target));
-    }
-
-    // Recursive helper: finds files inside any user folder
-    private File findRecursively(File dir, String filename) {
-        File[] files = dir.listFiles();
-        if (files == null) return null;
-
-        for (File f : files) {
-            if (f.isDirectory()) {
-                File found = findRecursively(f, filename);
-                if (found != null) return found;
-            } else {
-                if (f.getName().equals(filename)) {
-                    return f;
-                }
-            }
-        }
-
-        return null;
     }
 }
