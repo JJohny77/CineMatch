@@ -1,10 +1,14 @@
 import React, { useState } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const UploadPage: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState<boolean>(false);
+
+  const navigate = useNavigate();
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0];
@@ -63,16 +67,24 @@ const UploadPage: React.FC = () => {
       return;
     }
 
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("You must be logged in to upload");
+      navigate("/login");
+      return;
+    }
+
     const formData = new FormData();
     formData.append("file", file);
 
     try {
       setIsUploading(true);
 
-      const axios = (await import("axios")).default;
-
       await axios.post("http://localhost:8080/content/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
         onUploadProgress: (progressEvent) => {
           const percent = Math.round(
             (progressEvent.loaded * 100) / (progressEvent.total ?? 1)
@@ -82,7 +94,7 @@ const UploadPage: React.FC = () => {
       });
 
       alert("Upload successful!");
-      window.location.href = "/";
+      navigate("/gallery");
     } catch (error) {
       console.error(error);
       alert("Upload error");
@@ -95,7 +107,6 @@ const UploadPage: React.FC = () => {
     <div style={{ padding: "20px", color: "white", position: "relative" }}>
       <h1>Upload Content</h1>
 
-      {/* Loading Overlay */}
       {isUploading && (
         <div
           style={{
@@ -112,7 +123,6 @@ const UploadPage: React.FC = () => {
             backdropFilter: "blur(3px)",
           }}
         >
-          {/* Spinner */}
           <div
             style={{
               width: "60px",
@@ -135,7 +145,6 @@ const UploadPage: React.FC = () => {
         `}
       </style>
 
-      {/* Drag & Drop Zone */}
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -174,7 +183,6 @@ const UploadPage: React.FC = () => {
         />
       </div>
 
-      {/* Preview + Info + Upload Button + Progress */}
       {previewUrl && (
         <div style={{ marginTop: "20px", textAlign: "center" }}>
           {file?.type.startsWith("image") ? (
@@ -207,7 +215,6 @@ const UploadPage: React.FC = () => {
               : "Image preview"}
           </p>
 
-          {/* ANIMATED Upload Button */}
           <button
             onClick={handleUpload}
             style={{
@@ -240,7 +247,6 @@ const UploadPage: React.FC = () => {
             Upload
           </button>
 
-          {/* Progress Bar */}
           {uploadProgress > 0 && uploadProgress < 100 && (
             <div
               style={{

@@ -1,10 +1,13 @@
 package com.cinematch.backend.controller.upload;
 
 import com.cinematch.backend.dto.ContentUploadResponse;
+import com.cinematch.backend.model.User;
+import com.cinematch.backend.repository.UserRepository;
 import com.cinematch.backend.service.upload.ContentUploadService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,17 +21,31 @@ import java.util.*;
 public class ContentUploadController {
 
     private final ContentUploadService contentUploadService;
+    private final UserRepository userRepository;
 
     // =========================================
-    // UPLOAD ENDPOINT
+    // helper: παίρνουμε userId από Authentication
+    // =========================================
+    private Long getCurrentUserId(Authentication authentication) {
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return user.getId();
+    }
+
+    // =========================================
+    // UPLOAD ENDPOINT (per user)
     // =========================================
     @PostMapping("/upload")
     public ResponseEntity<ContentUploadResponse> uploadContent(
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication) {
 
-        ContentUploadResponse res = contentUploadService.handleUpload(file);
+        Long userId = getCurrentUserId(authentication);
 
-        if (res.getStatus().equals("success")) {
+        ContentUploadResponse res = contentUploadService.handleUpload(file, userId);
+
+        if ("success".equals(res.getStatus())) {
             return ResponseEntity.ok(res);
         }
 
@@ -41,51 +58,27 @@ public class ContentUploadController {
     }
 
     // =========================================
-    // LIST CONTENT
+    // LIST CONTENT (current user only)
     // =========================================
     @GetMapping("/list")
-    public ResponseEntity<List<Map<String, String>>> listContent() {
+    public ResponseEntity<List<Map<String, String>>> listContent(Authentication authentication) {
 
-        List<Map<String, String>> result = new ArrayList<>();
+        Long userId = getCurrentUserId(authentication);
 
-        // IMAGE DIRECTORY
-        File imageDir = new File("C:\\CineMatch\\backend\\uploads\\images\\");
-        if (imageDir.exists()) {
-            for (File f : Objects.requireNonNull(imageDir.listFiles())) {
-                if (!f.isDirectory()) {
-                    Map<String, String> item = new HashMap<>();
-                    item.put("filename", f.getName());
-                    item.put("type", "image");
-                    item.put("url", "/uploads/images/" + f.getName());
-                    result.add(item);
-                }
-            }
-        }
-
-        // VIDEO DIRECTORY
-        File videoDir = new File("C:\\CineMatch\\backend\\uploads\\videos\\");
-        if (videoDir.exists()) {
-            for (File f : Objects.requireNonNull(videoDir.listFiles())) {
-                if (!f.isDirectory()) {
-                    Map<String, String> item = new HashMap<>();
-                    item.put("filename", f.getName());
-                    item.put("type", "video");
-                    item.put("url", "/uploads/videos/" + f.getName());
-                    result.add(item);
-                }
-            }
-        }
-
+        List<Map<String, String>> result = contentUploadService.listUserContent(userId);
         return ResponseEntity.ok(result);
     }
 
     // =========================================
-    // DELETE CONTENT
+    // DELETE CONTENT (current user only)
     // =========================================
     @DeleteMapping("/delete/{filename}")
-    public ResponseEntity<String> deleteContent(@PathVariable String filename) {
+    public ResponseEntity<String> deleteContent(
+            @PathVariable String filename,
+            Authentication authentication) {
 
-        boolean deleted = contentUploadService.deleteContent(filename);
+        Long userId = getCurrentUserId(authentication);
+        boolean deleted = contentUploadService.deleteContent(userId, filename);
 
         if (deleted) {
             return ResponseEntity.ok("Deleted");
@@ -95,19 +88,15 @@ public class ContentUploadController {
     }
 
     // =========================================
-    // DOWNLOAD CONTENT
+    // DOWNLOAD CONTENT (current user only)
     // =========================================
     @GetMapping("/download/{filename}")
-    public ResponseEntity<?> downloadFile(@PathVariable String filename) {
+    public ResponseEntity<?> downloadFile(
+            @PathVariable String filename,
+            Authentication authentication) {
 
-        String imagePath = "C:\\CineMatch\\backend\\uploads\\images\\" + filename;
-        String videoPath = "C:\\CineMatch\\backend\\uploads\\videos\\" + filename;
-
-        File imageFile = new File(imagePath);
-        File videoFile = new File(videoPath);
-
-        File target = imageFile.exists() ? imageFile :
-                videoFile.exists() ? videoFile : null;
+        Long userId = getCurrentUserId(authentication);
+        File target = contentUploadService.findUserFile(userId, filename);
 
         if (target == null) {
             return ResponseEntity.status(404).body("File not found");
