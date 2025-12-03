@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import SentimentWidget from "../components/SentimentWidget";
 import {
   fetchStarPower,
   fetchAudienceEngagement,
@@ -338,9 +339,10 @@ export default function MovieDetailsPage() {
           </ul>
 
           <h3 style={{ marginTop: "30px" }}>Overview</h3>
-          <p style={{ lineHeight: "1.7", opacity: 0.9 }}>
-            {movie.overview}
-          </p>
+          <p style={{ lineHeight: "1.7", opacity: 0.9 }}>{movie.overview}</p>
+          <div style={{ marginTop: "40px" }}>
+            <SentimentWidget />
+          </div>
         </div>
       </div>
 
