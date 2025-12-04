@@ -4,24 +4,31 @@ import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.stereotype.Service;
 
 @Service
-// @Service λέει στο Spring ότι αυτή η κλάση είναι Service Bean
 public class TmdbEnvService {
 
+    private final Dotenv dotenv;
     private final String apiKey;
+    private final String accessToken;
 
-    // Constructor injection: το Spring δίνει το Dotenv bean που φτιάξαμε στο EnvConfig
     public TmdbEnvService(Dotenv dotenv) {
+        this.dotenv = dotenv;
 
-        // Παίρνουμε την τιμή TMDB_API_KEY από το αρχείο .env
+        // Load TMDB API key (v3)
         this.apiKey = dotenv.get("TMDB_API_KEY");
-
-        // Test print για να δούμε αν φορτώθηκε σωστά το .env
         System.out.println("Loaded TMDB API key: " + apiKey);
+
+        // Load TMDB Access Token (v4)
+        this.accessToken = dotenv.get("tmdb.access.token");
+        System.out.println("Loaded TMDB v4 Access Token: " + accessToken);
     }
 
-    // Μέθοδος που επιστρέφει το TMDB API key
+    // v3 API KEY
     public String getApiKey() {
         return apiKey;
     }
-}
 
+    // v4 ACCESS TOKEN (Bearer)
+    public String getAccessToken() {
+        return accessToken;
+    }
+}
