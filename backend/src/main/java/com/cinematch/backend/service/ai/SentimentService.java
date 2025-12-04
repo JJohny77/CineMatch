@@ -23,6 +23,14 @@ public class SentimentService {
 
     public SentimentResponse analyze(String text) {
 
+        // 🔐 Safety check για να μη στέλνουμε άδειο token
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException(
+                    "HuggingFace API key is missing. " +
+                            "Set HUGGINGFACE_API_KEY in your .env or environment."
+            );
+        }
+
         // ---- 1. Payload ----
         JSONObject payload = new JSONObject();
         payload.put("inputs", text);
@@ -30,11 +38,10 @@ public class SentimentService {
         // ---- 2. Headers ----
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-
-        // Required fixes for HuggingFace Router
         headers.set(HttpHeaders.ACCEPT, "application/json");
         headers.add("X-Response-Format", "json");
 
+        // Authorization: Bearer hf_xxx
         headers.setBearerAuth(apiKey);
 
         HttpEntity<String> request = new HttpEntity<>(payload.toString(), headers);
@@ -53,6 +60,7 @@ public class SentimentService {
             throw new IllegalStateException("Empty response from HuggingFace");
         }
 
+        // HF Router όταν το μοντέλο “ξυπνάει”/φορτώνει
         if (body.contains("\"estimated_time\"") || body.contains("\"error\"")) {
             return new SentimentResponse("loading", 0.0);
         }
@@ -65,27 +73,24 @@ public class SentimentService {
 
         if (first instanceof JSONObject) {
             bestLabelObj = (JSONObject) first;
-
         } else if (first instanceof JSONArray) {
             bestLabelObj = ((JSONArray) first).getJSONObject(0);
-
         } else {
             throw new IllegalStateException("Unknown HF format: " + body);
         }
 
-        String rawLabel = bestLabelObj.getString("label").toLowerCase(); // positive or negative
+        String rawLabel = bestLabelObj.getString("label").toLowerCase(); // "positive" ή "negative"
         double score = bestLabelObj.getDouble("score");
 
         // ---- 5. Neutral Logic ----
-        // SST-2 is binary → low confidence = neutral
         String finalLabel;
-
         if (score < 0.60) {
             finalLabel = "neutral";
         } else {
-            finalLabel = rawLabel; // "positive" or "negative"
+            finalLabel = rawLabel; // "positive" ή "negative"
         }
 
         return new SentimentResponse(finalLabel, score);
     }
 }
+
