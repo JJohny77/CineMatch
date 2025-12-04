@@ -1,17 +1,10 @@
 package com.cinematch.backend.controller;
 
-import com.cinematch.backend.dto.MovieDetailsDto;
-import com.cinematch.backend.dto.MovieSearchResponse;
-import com.cinematch.backend.dto.TrendingMovieDto;
-import com.cinematch.backend.dto.MovieVideoDto;
+import com.cinematch.backend.dto.*;
 import com.cinematch.backend.service.TmdbService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -45,9 +38,62 @@ public class MovieController {
     }
 
     /**
+     * US45 – Explore Movies
+     * GET /movies/explore
+     *
+     * Filters:
+     * - page
+     * - sortBy
+     * - yearFrom / yearTo
+     * - minRating
+     * - castId (actor)
+     * - crewId (director)
+     * - genreId
+     */
+    @GetMapping("/explore")
+    public MovieSearchResponse exploreMovies(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "popularity.desc") String sortBy,
+            @RequestParam(required = false) Integer yearFrom,
+            @RequestParam(required = false) Integer yearTo,
+            @RequestParam(required = false) Double minRating,
+            @RequestParam(required = false) Long castId,
+            @RequestParam(required = false) Long crewId,
+            @RequestParam(required = false) Integer genreId
+    ) {
+        return tmdbService.exploreMovies(
+                page,
+                sortBy,
+                yearFrom,
+                yearTo,
+                minRating,
+                castId,
+                crewId,
+                genreId
+        );
+    }
+
+    /**
+     * Genres
+     * GET /movies/genres
+     */
+    @GetMapping("/genres")
+    public GenreListResponse getGenres() {
+        return tmdbService.getMovieGenres();
+    }
+
+    /**
+     * Search persons (actors/directors) by name.
+     * GET /movies/person/search?query=tom
+     */
+    @GetMapping("/person/search")
+    public PersonSearchResponse searchPerson(@RequestParam String query) {
+        return tmdbService.searchPerson(query);
+    }
+
+    /**
      * US18 – Movie Videos (trailers)
      * GET /movies/{id}/videos
-     * 👉 ΠΡΕΠΕΙ ΝΑ ΜΠΕΙ ΠΑΝΩ ΑΠΟ ΤΟ /movies/{id}
      */
     @GetMapping("/{id}/videos")
     public ResponseEntity<List<MovieVideoDto>> getMovieVideos(@PathVariable("id") Long id) {
