@@ -29,8 +29,9 @@ const SentimentWidget: React.FC = () => {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(async () => {
       try {
+        const API_URL = "http://localhost:8080";
         const response = await axios.post<SentimentResponse>(
-          "/ai/sentiment",
+          `${API_URL}/ai/sentiment`,
           { text },
           { signal: controller.signal }
         );
