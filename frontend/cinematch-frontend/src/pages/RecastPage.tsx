@@ -1,16 +1,16 @@
 import React, { useState } from "react";
 import axios from "axios";
 
-export default function RecastPage() {
+export default function FaceIdentifyPage() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<any>(null);
+  const [results, setResults] = useState<any[]>([]);
 
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setResult(null);
+    setResults([]);
 
     if (!file) {
       setError("Please upload an image.");
@@ -24,11 +24,11 @@ export default function RecastPage() {
       setLoading(true);
 
       const res = await axios.post(
-        "http://localhost:8080/ai/recast",
+        "http://localhost:8080/ai/face/identify",
         formData
       );
 
-      setResult(res.data);
+      setResults(res.data); // ARRAY of results
     } catch (err) {
       console.error(err);
       setError("Failed to analyze image.");
@@ -39,11 +39,10 @@ export default function RecastPage() {
 
   return (
     <div style={{ color: "white", paddingTop: "100px", textAlign: "center" }}>
-      <h1>Recast-It (Actor Lookalike)</h1>
+      <h1>Actor Lookalike Finder</h1>
 
       <form onSubmit={handleUpload} style={{ marginTop: "20px" }}>
-
-        {/* File Input */}
+        {/* File input */}
         <div style={{ marginBottom: "20px" }}>
           <input
             type="file"
@@ -52,7 +51,7 @@ export default function RecastPage() {
           />
         </div>
 
-        {/* Button BELOW file input */}
+        {/* Submit */}
         <button
           type="submit"
           disabled={loading}
@@ -69,26 +68,59 @@ export default function RecastPage() {
         </button>
       </form>
 
+      {/* Error */}
       {error && (
         <p style={{ marginTop: "20px", color: "#ff6b6b" }}>{error}</p>
       )}
 
-      {result && (
+      {/* RESULTS */}
+      {results.length > 0 && (
         <div style={{ marginTop: "40px" }}>
-          <h2>{result.actor}</h2>
-          <p>Similarity: {(result.similarity * 100).toFixed(1)}%</p>
-          <img
-            src={`https://image.tmdb.org/t/p/w300${result.actorImage}`}
-            alt="actor"
+          <h2>Top Matches</h2>
+
+          <div
             style={{
-              width: "150px",
-              height: "150px",
-              borderRadius: "50%",
-              objectFit: "cover",
+              display: "flex",
+              justifyContent: "center",
+              gap: "30px",
+              flexWrap: "wrap",
               marginTop: "20px",
             }}
-          />
-          <p style={{ marginTop: "10px" }}>TMDb ID: {result.actorId}</p>
+          >
+            {results.map((r, idx) => (
+              <div
+                key={idx}
+                style={{
+                  background: "#222",
+                  padding: "15px",
+                  borderRadius: "12px",
+                  width: "200px",
+                  textAlign: "center",
+                }}
+              >
+                <h3 style={{ marginBottom: "10px" }}>{r.actor}</h3>
+                <p style={{ margin: 0 }}>
+                  Similarity: {(r.similarity * 100).toFixed(1)}%
+                </p>
+
+                <img
+                  src={r.actorImage}
+                  alt="actor"
+                  style={{
+                    width: "150px",
+                    height: "150px",
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    marginTop: "20px",
+                  }}
+                />
+
+                <p style={{ marginTop: "10px", fontSize: "14px" }}>
+                  TMDb ID: {r.actorId}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
