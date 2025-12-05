@@ -124,6 +124,13 @@
             <version>0.7.0</version>
         </dependency>
 
+        <!-- ONNX Runtime για Java (CPU only) -->
+        <dependency>
+            <groupId>com.microsoft.onnxruntime</groupId>
+            <artifactId>onnxruntime</artifactId>
+            <version>1.22.0</version>
+        </dependency>
+
     </dependencies>
 
     <build>
