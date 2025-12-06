@@ -11,10 +11,8 @@ import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
-import org.springframework.web.util.UriUtils;
 
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Service
@@ -27,7 +25,8 @@ public class TmdbService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${tmdb.api.key}")
+    // (προς το παρόν δεν το χρειαζόμαστε, αλλά το κρατάω για μελλοντικά v3-only endpoints)
+    @Value("${tmdb.api.key:}")
     private String apiKey;
 
     public TmdbService(
@@ -85,16 +84,13 @@ public class TmdbService {
                 throw new IllegalArgumentException("Query cannot be empty");
             }
 
-            String url = baseUrl + "/search/movie" +
-                    "?api_key=" + apiKey +
-                    "&query=" + UriUtils.encode(query, StandardCharsets.UTF_8) +
-                    "&language=en-US" +
-                    "&include_adult=false";
+            Map<String, String> params = new HashMap<>();
+            params.put("query", query);           // το encoding θα το κάνει ο UriComponentsBuilder
+            params.put("language", "en-US");
+            params.put("include_adult", "false");
 
-            logger.info("TMDb Search Request URL: {}", url);
-
-            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
-            return objectMapper.readValue(response.getBody(), MovieSearchResponse.class);
+            String json = fetchFromTmdb("/search/movie", params);
+            return objectMapper.readValue(json, MovieSearchResponse.class);
 
         } catch (Exception e) {
             logger.error("Search error: {}", e.getMessage());
@@ -168,12 +164,10 @@ public class TmdbService {
             params.put("language", "en-US");
             params.put("query", query);
             params.put("include_adult", "false");
-            // προαιρετικό, για σταθερότητα
             params.put("page", "1");
 
             String json = fetchFromTmdb("/search/person", params);
 
-            // μικρό debug – αν θες, μπορείς να το σβήσεις μετά
             logger.info("TMDb /search/person raw JSON for '{}': {}", query, json);
 
             return objectMapper.readValue(json, PersonSearchResponse.class);
@@ -184,49 +178,44 @@ public class TmdbService {
         }
     }
 
-
     // ============================================================
     //  TRENDING MOVIES
     // ============================================================
     public List<TrendingMovieDto> getTrendingMovies(String timeWindow) {
         try {
-            if (!timeWindow.equals("day") && !timeWindow.equals("week")) {
+            if (!"day".equals(timeWindow) && !"week".equals(timeWindow)) {
                 timeWindow = "day";
             }
 
-            String url = baseUrl + "/trending/movie/" + timeWindow +
-                    "?api_key=" + apiKey +
-                    "&language=en-US";
+            String json = fetchFromTmdb(
+                    "/trending/movie/" + timeWindow,
+                    Map.of("language", "en-US")
+            );
 
-            logger.info("TMDb Trending Request URL: {}", url);
-
-            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
-
-            Map<String, Object> json = objectMapper.readValue(response.getBody(), Map.class);
-            List<Map<String, Object>> results = (List<Map<String, Object>>) json.get("results");
+            Map<String, Object> map = objectMapper.readValue(json, Map.class);
+            List<Map<String, Object>> results = (List<Map<String, Object>>) map.get("results");
 
             List<TrendingMovieDto> output = new ArrayList<>();
 
-            for (Map<String, Object> movie : results) {
-                Long id = ((Number) movie.get("id")).longValue();
-
-                TrendingMovieDto dto = new TrendingMovieDto(
-                        id,
-                        (String) movie.get("title"),
-                        (String) movie.get("overview"),
-                        (String) movie.get("poster_path"),
-                        movie.get("popularity") != null ?
-                                ((Number) movie.get("popularity")).doubleValue() : 0.0,
-                        (String) movie.get("release_date")
-                );
-
-                output.add(dto);
+            if (results != null) {
+                for (Map<String, Object> movie : results) {
+                    output.add(new TrendingMovieDto(
+                            ((Number) movie.get("id")).longValue(),
+                            (String) movie.get("title"),
+                            (String) movie.get("overview"),
+                            (String) movie.get("poster_path"),
+                            movie.get("popularity") != null
+                                    ? ((Number) movie.get("popularity")).doubleValue()
+                                    : 0.0,
+                            (String) movie.get("release_date")
+                    ));
+                }
             }
 
             return output;
 
         } catch (Exception e) {
-            logger.error("Trending parsing error: {}", e.getMessage());
+            logger.error("Trending error: {}", e.getMessage());
             throw new RuntimeException("Failed to load trending movies");
         }
     }

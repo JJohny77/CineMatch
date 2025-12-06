@@ -1,34 +1,45 @@
 package com.cinematch.backend.service;
 
-import io.github.cdimascio.dotenv.Dotenv;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
 public class TmdbEnvService {
 
-    private final Dotenv dotenv;
-    private final String apiKey;
-    private final String accessToken;
+    private static final Logger logger = LoggerFactory.getLogger(TmdbEnvService.class);
 
-    public TmdbEnvService(Dotenv dotenv) {
-        this.dotenv = dotenv;
+    private final String apiKeyV3;
+    private final String accessTokenV4;
 
-        // Load TMDB API key (v3)
-        this.apiKey = dotenv.get("TMDB_API_KEY");
-        System.out.println("Loaded TMDB API key: " + apiKey);
+    public TmdbEnvService(
+            @Value("${tmdb.api.key:}") String apiKeyV3,
+            @Value("${tmdb.access.token:}") String accessTokenV4
+    ) {
+        this.apiKeyV3 = apiKeyV3;
+        this.accessTokenV4 = accessTokenV4;
 
-        // Load TMDB Access Token (v4)
-        this.accessToken = dotenv.get("tmdb.access.token");
-        System.out.println("Loaded TMDB v4 Access Token: " + accessToken);
+        // Μικρό debug για να είμαστε σίγουροι τι διαβάζει
+        if (this.accessTokenV4 == null || this.accessTokenV4.isBlank()) {
+            logger.error("TMDb v4 access token (tmdb.access.token) ΔΕΝ είναι ρυθμισμένο!");
+        } else {
+            logger.info("TMDb v4 access token φορτώθηκε ({} χαρακτήρες).", this.accessTokenV4.length());
+        }
+
+        if (this.apiKeyV3 == null || this.apiKeyV3.isBlank()) {
+            logger.warn("TMDb v3 api key (tmdb.api.key) δεν είναι ρυθμισμένο (ίσως να μην το χρειάζεσαι).");
+        }
     }
 
-    // v3 API KEY
-    public String getApiKey() {
-        return apiKey;
+    public String getApiKeyV3() {
+        return apiKeyV3;
     }
 
-    // v4 ACCESS TOKEN (Bearer)
     public String getAccessToken() {
-        return accessToken;
+        if (accessTokenV4 == null || accessTokenV4.isBlank()) {
+            throw new IllegalStateException("TMDb v4 access token is not configured (tmdb.access.token).");
+        }
+        return accessTokenV4;
     }
 }
