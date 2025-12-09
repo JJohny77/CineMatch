@@ -25,7 +25,6 @@ public class TmdbService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // (προς το παρόν δεν το χρειαζόμαστε, αλλά το κρατάω για μελλοντικά v3-only endpoints)
     @Value("${tmdb.api.key:}")
     private String apiKey;
 
@@ -38,14 +37,14 @@ public class TmdbService {
     }
 
     // ============================================================
-    //  UNIVERSAL TMDB CALLER (WITH v4 TOKEN)
+    // UNIVERSAL TMDB CALLER (WITH v4 TOKEN)
     // ============================================================
     public String fetchFromTmdb(String path, Map<String, String> queryParams) {
 
-        String accessToken = envService.getAccessToken();  // TMDB v4 token
+        String accessToken = envService.getAccessToken();
 
-        UriComponentsBuilder builder = UriComponentsBuilder
-                .fromHttpUrl(baseUrl + path);
+        UriComponentsBuilder builder =
+                UriComponentsBuilder.fromHttpUrl(baseUrl + path);
 
         if (queryParams != null) {
             queryParams.forEach(builder::queryParam);
@@ -76,7 +75,7 @@ public class TmdbService {
     }
 
     // ============================================================
-    //  US11 — SEARCH MOVIES
+    // US11 — SEARCH MOVIES
     // ============================================================
     public MovieSearchResponse searchMovies(String query) {
         try {
@@ -85,7 +84,7 @@ public class TmdbService {
             }
 
             Map<String, String> params = new HashMap<>();
-            params.put("query", query);           // το encoding θα το κάνει ο UriComponentsBuilder
+            params.put("query", query);
             params.put("language", "en-US");
             params.put("include_adult", "false");
 
@@ -99,7 +98,7 @@ public class TmdbService {
     }
 
     // ============================================================
-    //  US45 — EXPLORE MOVIES (DISCOVER ENDPOINT)
+    // US45 — EXPLORE MOVIES
     // ============================================================
     public MovieSearchResponse exploreMovies(
             int page,
@@ -142,7 +141,8 @@ public class TmdbService {
     // ============================================================
     public GenreListResponse getMovieGenres() {
         try {
-            String json = fetchFromTmdb("/genre/movie/list", Map.of("language", "en-US"));
+            String json =
+                    fetchFromTmdb("/genre/movie/list", Map.of("language", "en-US"));
             return objectMapper.readValue(json, GenreListResponse.class);
 
         } catch (Exception e) {
@@ -152,34 +152,7 @@ public class TmdbService {
     }
 
     // ============================================================
-    // PERSON SEARCH (ACTORS / DIRECTORS)
-    // ============================================================
-    public PersonSearchResponse searchPerson(String query) {
-        try {
-            if (query == null || query.isBlank()) {
-                throw new IllegalArgumentException("Query cannot be empty");
-            }
-
-            Map<String, String> params = new HashMap<>();
-            params.put("language", "en-US");
-            params.put("query", query);
-            params.put("include_adult", "false");
-            params.put("page", "1");
-
-            String json = fetchFromTmdb("/search/person", params);
-
-            logger.info("TMDb /search/person raw JSON for '{}': {}", query, json);
-
-            return objectMapper.readValue(json, PersonSearchResponse.class);
-
-        } catch (Exception e) {
-            logger.error("Failed to search person with query '{}': {}", query, e.getMessage(), e);
-            throw new RuntimeException("Failed to search person", e);
-        }
-    }
-
-    // ============================================================
-    //  TRENDING MOVIES
+    // TRENDING MOVIES
     // ============================================================
     public List<TrendingMovieDto> getTrendingMovies(String timeWindow) {
         try {
@@ -193,7 +166,8 @@ public class TmdbService {
             );
 
             Map<String, Object> map = objectMapper.readValue(json, Map.class);
-            List<Map<String, Object>> results = (List<Map<String, Object>>) map.get("results");
+            List<Map<String, Object>> results =
+                    (List<Map<String, Object>>) map.get("results");
 
             List<TrendingMovieDto> output = new ArrayList<>();
 
@@ -227,7 +201,9 @@ public class TmdbService {
         try {
             if (id == null) throw new IllegalArgumentException("Movie id cannot be null");
 
-            String jsonString = fetchFromTmdb("/movie/" + id, Map.of("language", "en-US"));
+            String jsonString =
+                    fetchFromTmdb("/movie/" + id, Map.of("language", "en-US"));
+
             Map<String, Object> json = objectMapper.readValue(jsonString, Map.class);
 
             String title = (String) json.get("title");
@@ -254,13 +230,8 @@ public class TmdbService {
             }
 
             return new MovieDetailsDto(
-                    title,
-                    overview,
-                    posterPath,
-                    releaseDate,
-                    runtime,
-                    popularity,
-                    genres
+                    title, overview, posterPath, releaseDate,
+                    runtime, popularity, genres
             );
 
         } catch (Exception e) {
@@ -270,26 +241,28 @@ public class TmdbService {
     }
 
     // ============================================================
-    // MOVIE VIDEOS (TRAILERS)
+    // MOVIE VIDEOS
     // ============================================================
     public List<MovieVideoDto> getMovieVideos(Long id) {
         try {
             if (id == null) throw new IllegalArgumentException("Movie id cannot be null");
 
-            String path = "/movie/" + id + "/videos";
-            String jsonString = fetchFromTmdb(path, Map.of("language", "en-US"));
+            String jsonString =
+                    fetchFromTmdb("/movie/" + id + "/videos", Map.of("language", "en-US"));
 
-            Map<String, Object> json = objectMapper.readValue(jsonString, Map.class);
+            Map<String, Object> json =
+                    objectMapper.readValue(jsonString, Map.class);
 
             List<MovieVideoDto> videos = new ArrayList<>();
-            List<Map<String, Object>> results = (List<Map<String, Object>>) json.get("results");
+            List<Map<String, Object>> results =
+                    (List<Map<String, Object>>) json.get("results");
 
             if (results != null) {
-                for (Map<String, Object> videoMap : results) {
-                    String site = (String) videoMap.get("site");
-                    String type = (String) videoMap.get("type");
-                    String key = (String) videoMap.get("key");
-                    String name = (String) videoMap.get("name");
+                for (Map<String, Object> v : results) {
+                    String site = (String) v.get("site");
+                    String type = (String) v.get("type");
+                    String key = (String) v.get("key");
+                    String name = (String) v.get("name");
 
                     if ("YouTube".equalsIgnoreCase(site)
                             && "Trailer".equalsIgnoreCase(type)
@@ -303,7 +276,7 @@ public class TmdbService {
             return videos;
 
         } catch (Exception e) {
-            logger.error("Video load error for {}: {}", id, e.getMessage());
+            logger.error("Video load error: {}", e.getMessage());
             throw new RuntimeException("Failed to load movie videos");
         }
     }
@@ -316,6 +289,85 @@ public class TmdbService {
     }
 
     public String getPersonMovieCredits(Long id) {
-        return fetchFromTmdb("/person/" + id + "/movie_credits", Map.of("language", "en-US"));
+        return fetchFromTmdb("/person/" + id + "/movie_credits",
+                Map.of("language", "en-US"));
+    }
+
+    // ============================================================
+    // US47 — PERSON SEARCH (ACTORS / DIRECTORS)
+    // ============================================================
+    public PersonSearchResponseDto searchPerson(String query, int page) {
+        try {
+            if (query == null || query.trim().length() < 2) {
+                throw new IllegalArgumentException("Query must be at least 2 characters");
+            }
+            if (page < 1) page = 1;
+
+            Map<String, String> params = new HashMap<>();
+            params.put("language", "en-US");
+            params.put("query", query.trim());
+            params.put("include_adult", "false");
+            params.put("page", String.valueOf(page));
+
+            String json = fetchFromTmdb("/search/person", params);
+            logger.info("TMDb /search/person response: {}", json);
+
+            Map<String, Object> map = objectMapper.readValue(json, Map.class);
+
+            PersonSearchResponseDto response = new PersonSearchResponseDto();
+            response.setPage(((Number) map.get("page")).intValue());
+            response.setTotalPages(((Number) map.get("total_pages")).intValue());
+            response.setTotalResults(((Number) map.get("total_results")).longValue());
+
+            List<Map<String, Object>> results =
+                    (List<Map<String, Object>>) map.get("results");
+
+            List<PersonSearchResultDto> dtoList = new ArrayList<>();
+
+            if (results != null) {
+                for (Map<String, Object> p : results) {
+
+                    PersonSearchResultDto dto = new PersonSearchResultDto();
+                    dto.setId(((Number) p.get("id")).longValue());
+                    dto.setName((String) p.get("name"));
+                    dto.setProfilePath((String) p.get("profile_path"));
+                    dto.setKnownForDepartment((String) p.get("known_for_department"));
+                    dto.setPopularity(
+                            p.get("popularity") != null
+                                    ? ((Number) p.get("popularity")).doubleValue()
+                                    : 0.0
+                    );
+
+                    // Extract known_for (top 3)
+                    List<String> titles = new ArrayList<>();
+
+                    List<Map<String, Object>> knownFor =
+                            (List<Map<String, Object>>) p.get("known_for");
+
+                    if (knownFor != null) {
+                        for (int i = 0; i < knownFor.size() && i < 3; i++) {
+                            Map<String, Object> k = knownFor.get(i);
+
+                            String title =
+                                    k.get("title") != null
+                                            ? (String) k.get("title")
+                                            : (String) k.get("name");
+
+                            if (title != null) titles.add(title);
+                        }
+                    }
+
+                    dto.setKnownFor(titles);
+                    dtoList.add(dto);
+                }
+            }
+
+            response.setResults(dtoList);
+            return response;
+
+        } catch (Exception e) {
+            logger.error("Failed to search person '{}': {}", query, e.getMessage());
+            throw new RuntimeException("Failed to search persons");
+        }
     }
 }
