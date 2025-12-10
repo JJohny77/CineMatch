@@ -109,13 +109,18 @@ public class MovieController {
         return tmdbService.getMovieGenres();
     }
 
-    /**
-     * Search persons (actors/directors) by name.
-     * GET /movies/person/search?query=tom
-     */
     @GetMapping("/person/search")
-    public PersonSearchResponse searchPerson(@RequestParam String query) {
-        return tmdbService.searchPerson(query);
+    public ResponseEntity<PersonSearchResponseDto> searchPerson(
+            @RequestParam String query,
+            @RequestParam(defaultValue = "1") int page
+    ) {
+        if (query.trim().length() < 2) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        return ResponseEntity.ok(
+                tmdbService.searchPerson(query, page)
+        );
     }
 
     /**
