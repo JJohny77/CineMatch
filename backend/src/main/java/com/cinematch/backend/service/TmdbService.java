@@ -194,6 +194,95 @@ public class TmdbService {
         }
     }
 
+    public List<TrendingPersonDto> getTrendingActors(String timeWindow) {
+        try {
+            if (!"day".equals(timeWindow) && !"week".equals(timeWindow)) {
+                timeWindow = "day";
+            }
+
+            String json = fetchFromTmdb(
+                    "/trending/person/" + timeWindow,
+                    Map.of("language", "en-US")
+            );
+
+            Map<String, Object> map = objectMapper.readValue(json, Map.class);
+            List<Map<String, Object>> results = (List<Map<String, Object>>) map.get("results");
+
+            List<TrendingPersonDto> output = new ArrayList<>();
+
+            if (results != null) {
+                for (Map<String, Object> person : results) {
+
+                    String department = (String) person.get("known_for_department");
+
+                    // ONLY ACTORS
+                    if (!"Acting".equalsIgnoreCase(department)) continue;
+
+                    output.add(new TrendingPersonDto(
+                            ((Number) person.get("id")).longValue(),
+                            (String) person.get("name"),
+                            (String) person.get("profile_path"),
+                            department,
+                            person.get("popularity") != null
+                                    ? ((Number) person.get("popularity")).doubleValue()
+                                    : 0.0
+                    ));
+                }
+            }
+
+            return output;
+
+        } catch (Exception e) {
+            logger.error("Trending actors error: {}", e.getMessage());
+            throw new RuntimeException("Failed to load trending actors");
+        }
+    }
+
+    public List<TrendingPersonDto> getTrendingDirectors(String timeWindow) {
+        try {
+            if (!"day".equals(timeWindow) && !"week".equals(timeWindow)) {
+                timeWindow = "day";
+            }
+
+            String json = fetchFromTmdb(
+                    "/trending/person/" + timeWindow,
+                    Map.of("language", "en-US")
+            );
+
+            Map<String, Object> map = objectMapper.readValue(json, Map.class);
+            List<Map<String, Object>> results = (List<Map<String, Object>>) map.get("results");
+
+            List<TrendingPersonDto> output = new ArrayList<>();
+
+            if (results != null) {
+                for (Map<String, Object> person : results) {
+
+                    String department = (String) person.get("known_for_department");
+
+                    // ONLY DIRECTORS
+                    if (!"Directing".equalsIgnoreCase(department)) continue;
+
+                    output.add(new TrendingPersonDto(
+                            ((Number) person.get("id")).longValue(),
+                            (String) person.get("name"),
+                            (String) person.get("profile_path"),
+                            department,
+                            person.get("popularity") != null
+                                    ? ((Number) person.get("popularity")).doubleValue()
+                                    : 0.0
+                    ));
+                }
+            }
+
+            return output;
+
+        } catch (Exception e) {
+            logger.error("Trending directors error: {}", e.getMessage());
+            throw new RuntimeException("Failed to load trending directors");
+        }
+    }
+
+
     // ============================================================
     // MOVIE DETAILS
     // ============================================================

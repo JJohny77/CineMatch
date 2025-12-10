@@ -38,6 +38,33 @@ public class MovieController {
     }
 
     /**
+     * Trending actors
+     * GET /movies/trending-actors?time_window=day
+     */
+    @GetMapping("/trending-actors")
+    public ResponseEntity<List<TrendingPersonDto>> getTrendingActors(
+            @RequestParam(defaultValue = "day") String time_window
+    ) {
+        return ResponseEntity.ok(
+                tmdbService.getTrendingActors(time_window)
+        );
+    }
+
+    /**
+     * Trending directors
+     * GET /movies/trending-directors?time_window=day
+     */
+    @GetMapping("/trending-directors")
+    public ResponseEntity<List<TrendingPersonDto>> getTrendingDirectors(
+            @RequestParam(defaultValue = "day") String time_window
+    ) {
+        return ResponseEntity.ok(
+                tmdbService.getTrendingDirectors(time_window)
+        );
+    }
+
+
+    /**
      * US45 – Explore Movies
      * GET /movies/explore
      *
