@@ -1,8 +1,14 @@
 // src/api/movies.ts
 
-// ----------------------------
-// Τύπος για κάθε trending movie
-// ----------------------------
+// =========================
+// CONSTANTS
+// =========================
+const API_URL = "http://localhost:8080";
+
+// =========================
+// TYPES
+// =========================
+
 export type TrendingMovie = {
   id: number;
   title: string;
@@ -12,9 +18,14 @@ export type TrendingMovie = {
   releaseDate: string;
 };
 
-// ----------------------------
-// Explore movie types
-// ----------------------------
+export type TrendingPerson = {
+  id: number;
+  name: string;
+  profilePath: string | null;
+  department: string;
+  popularity: number;
+};
+
 export type ExploreMovie = {
   id: number;
   title: string;
@@ -37,11 +48,20 @@ export type ExploreResponse = {
   total_results: number;
 };
 
-const API_URL = "http://localhost:8080";
+export type ExploreParams = {
+  page?: number;
+  sortBy?: string;
+  yearFrom?: number | null;
+  yearTo?: number | null;
+  minRating?: number | null;
+  castId?: number | null;
+  crewId?: number | null;
+  genreId?: number | null;
+};
 
-// ----------------------------
-// Trending
-// ----------------------------
+// =========================
+// TRENDING MOVIES
+// =========================
 export async function fetchTrending(
   timeWindow: "day" | "week" = "day"
 ): Promise<TrendingMovie[]> {
@@ -49,60 +69,59 @@ export async function fetchTrending(
     `${API_URL}/movies/trending?time_window=${timeWindow}`
   );
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch trending movies");
-  }
+  if (!response.ok) throw new Error("Failed to fetch trending movies");
 
   return response.json();
 }
 
-// ----------------------------
-// Explore parameters (EXTENDED)
-// ----------------------------
-export type ExploreParams = {
-  page?: number;
-  sortBy?: string;
-  yearFrom?: number | null;
-  yearTo?: number | null;
-  minRating?: number | null;
+// =========================
+// TRENDING ACTORS
+// =========================
+export async function fetchTrendingActors(
+  timeWindow: "day" | "week" = "day"
+) {
+  const res = await fetch(
+    `${API_URL}/movies/trending-actors?time_window=${timeWindow}`
+  );
+  if (!res.ok) throw new Error("Failed to fetch trending actors");
+  return res.json();
+}
 
-  // NEW filters
-  castId?: number | null;     // actor ID
-  crewId?: number | null;     // director ID
-  genreId?: number | null;    // TMDb genre ID
-};
+// =========================
+// TRENDING DIRECTORS
+// =========================
+export async function fetchTrendingDirectors(
+  timeWindow: "day" | "week" = "week"
+) {
+  const res = await fetch(
+    `${API_URL}/movies/trending-directors?time_window=${timeWindow}`
+  );
+  if (!res.ok) throw new Error("Failed to fetch trending directors");
+  return res.json();
+}
 
-// ----------------------------
-// Explore API call
-// ----------------------------
+// =========================
+// EXPLORE MOVIES
+// =========================
 export async function fetchExplore(
   params: ExploreParams = {}
 ): Promise<ExploreResponse> {
   const searchParams = new URLSearchParams();
 
-  // Page
   searchParams.set("page", params.page ? String(params.page) : "1");
-
-  // Sort
   if (params.sortBy) searchParams.set("sortBy", params.sortBy);
-
-  // Year filters
   if (params.yearFrom != null) searchParams.set("yearFrom", String(params.yearFrom));
   if (params.yearTo != null) searchParams.set("yearTo", String(params.yearTo));
-
-  // Minimum rating
   if (params.minRating != null) searchParams.set("minRating", String(params.minRating));
 
-  // NEW FILTERS
   if (params.castId != null) searchParams.set("castId", String(params.castId));
   if (params.crewId != null) searchParams.set("crewId", String(params.crewId));
   if (params.genreId != null) searchParams.set("genreId", String(params.genreId));
 
-  const queryString = searchParams.toString();
-  const url = `${API_URL}/movies/explore?${queryString}`;
+  const url = `${API_URL}/movies/explore?${searchParams.toString()}`;
 
   const response = await fetch(url);
   if (!response.ok) throw new Error("Failed to explore movies");
 
-  return (await response.json()) as ExploreResponse;
+  return response.json();
 }
