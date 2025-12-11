@@ -459,4 +459,97 @@ public class TmdbService {
             throw new RuntimeException("Failed to search persons");
         }
     }
+
+    // ============================================================
+// US49 — ACTOR DETAILS + CREDITS
+// ============================================================
+    public ActorDetailsDto getActorDetails(Long id) {
+        try {
+            if (id == null) {
+                throw new IllegalArgumentException("Actor id cannot be null");
+            }
+
+            // 1) Load raw person details
+            String personJson = getPersonDetails(id);
+            Map<String, Object> person = objectMapper.readValue(personJson, Map.class);
+
+            // Αν δεν υπάρχει το άτομο → 404
+            if (person.get("id") == null) {
+                throw new RuntimeException("Actor not found");
+            }
+
+            // 2) Load raw movie credits
+            String creditsJson = getPersonMovieCredits(id);
+            Map<String, Object> credits = objectMapper.readValue(creditsJson, Map.class);
+
+            // ===========================
+            // BUILD DTO
+            // ===========================
+            ActorDetailsDto dto = new ActorDetailsDto();
+
+            dto.setId(((Number) person.get("id")).longValue());
+            dto.setName((String) person.get("name"));
+            dto.setProfilePath((String) person.get("profile_path"));
+            dto.setBiography((String) person.get("biography"));
+            dto.setBirthday((String) person.get("birthday"));
+            dto.setPlaceOfBirth((String) person.get("place_of_birth"));
+
+            // ---------------------------
+            // KNOWN FOR: top 5–10 movies
+            // ---------------------------
+            List<Map<String, Object>> castCredits =
+                    (List<Map<String, Object>>) credits.get("cast");
+
+            List<KnownForDto> knownForList = new ArrayList<>();
+
+            if (castCredits != null) {
+                int limit = Math.min(castCredits.size(), 10);
+
+                for (int i = 0; i < limit; i++) {
+                    Map<String, Object> m = castCredits.get(i);
+
+                    KnownForDto k = new KnownForDto();
+                    k.setMovieId(((Number) m.get("id")).longValue());
+                    k.setTitle((String) m.getOrDefault("title", m.get("original_title")));
+                    k.setPosterPath((String) m.get("poster_path"));
+
+                    knownForList.add(k);
+                }
+            }
+
+            dto.setKnownFor(knownForList);
+
+            // ---------------------------
+            // FILMOGRAPHY (full cast roles)
+            // ---------------------------
+            List<FilmographyDto> filmography = new ArrayList<>();
+
+            if (castCredits != null) {
+                for (Map<String, Object> m : castCredits) {
+                    FilmographyDto f = new FilmographyDto();
+
+                    f.setMovieId(((Number) m.get("id")).longValue());
+                    f.setTitle((String) m.getOrDefault("title", m.get("original_title")));
+                    f.setCharacter((String) m.get("character"));
+
+                    // Extract release year (nullable)
+                    String date = (String) m.get("release_date");
+                    if (date != null && date.length() >= 4) {
+                        f.setReleaseYear(Integer.valueOf(date.substring(0, 4)));
+                    }
+
+                    filmography.add(f);
+                }
+            }
+
+            dto.setFilmography(filmography);
+
+            return dto;
+
+        } catch (Exception e) {
+            logger.error("Failed to load actor details: {}", e.getMessage());
+            throw new RuntimeException("Failed to load actor details");
+        }
+    }
+
 }
