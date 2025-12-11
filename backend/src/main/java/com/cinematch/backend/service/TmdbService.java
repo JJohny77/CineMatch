@@ -552,4 +552,94 @@ public class TmdbService {
         }
     }
 
+    // ============================================================
+    // US51 — DIRECTOR DETAILS + DIRECTED MOVIES
+    // ============================================================
+    public DirectorDetailsDto getDirectorDetails(Long id) {
+        try {
+            if (id == null) {
+                throw new IllegalArgumentException("Director id cannot be null");
+            }
+
+            // 1) Λεπτομέρειες προσώπου (person)
+            String personJson = getPersonDetails(id);
+            Map<String, Object> person = objectMapper.readValue(personJson, Map.class);
+
+            if (person.get("id") == null) {
+                throw new RuntimeException("Director not found");
+            }
+
+            // 2) Movie credits (θα φιλτράρουμε το crew για job = Director)
+            String creditsJson = getPersonMovieCredits(id);
+            Map<String, Object> credits = objectMapper.readValue(creditsJson, Map.class);
+
+            List<Map<String, Object>> crewCredits =
+                    (List<Map<String, Object>>) credits.get("crew");
+
+            List<Map<String, Object>> directedOnly = new ArrayList<>();
+
+            if (crewCredits != null) {
+                for (Map<String, Object> c : crewCredits) {
+                    String job = (String) c.get("job");
+                    if (job != null && job.equalsIgnoreCase("Director")) {
+                        directedOnly.add(c);
+                    }
+                }
+            }
+
+            // Ταξινόμηση κατά release_date (νεότερες πρώτες)
+            directedOnly.sort((a, b) -> {
+                String da = (String) a.get("release_date");
+                String db = (String) b.get("release_date");
+
+                if (da == null && db == null) return 0;
+                if (da == null) return 1;
+                if (db == null) return -1;
+
+                // YYYY-MM-DD → lexicographical sort works
+                return db.compareTo(da);
+            });
+
+            // Χτίζουμε τη λίστα directedMovies (max 20, χωρίς διπλότυπα)
+            List<KnownForDto> directedMovies = new ArrayList<>();
+            Set<Long> seen = new HashSet<>();
+
+            for (Map<String, Object> m : directedOnly) {
+                Long movieId = ((Number) m.get("id")).longValue();
+                if (!seen.add(movieId)) continue; // skip duplicates
+
+                KnownForDto k = new KnownForDto();
+                k.setMovieId(movieId);
+
+                String title = (String) m.get("title");
+                if (title == null) {
+                    title = (String) m.get("original_title");
+                }
+                k.setTitle(title);
+
+                k.setPosterPath((String) m.get("poster_path"));
+
+                directedMovies.add(k);
+                if (directedMovies.size() >= 20) break;
+            }
+
+            // Φτιάχνουμε το τελικό DTO
+            DirectorDetailsDto dto = new DirectorDetailsDto();
+            dto.setId(((Number) person.get("id")).longValue());
+            dto.setName((String) person.get("name"));
+            dto.setProfilePath((String) person.get("profile_path"));
+            dto.setBiography((String) person.get("biography"));
+            dto.setBirthday((String) person.get("birthday"));
+            dto.setPlaceOfBirth((String) person.get("place_of_birth"));
+            dto.setDirectedMovies(directedMovies);
+
+            return dto;
+
+        } catch (Exception e) {
+            logger.error("Failed to load director details: {}", e.getMessage());
+            throw new RuntimeException("Failed to load director details");
+        }
+    }
+
+
 }

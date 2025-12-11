@@ -11,7 +11,9 @@ import {
 type TmdbPerson = {
   id: number;
   name: string;
+  // Υποστηρίζουμε ΚΑΙ snake_case ΚΑΙ camelCase
   known_for_department?: string;
+  knownForDepartment?: string;
 };
 
 type TmdbGenre = {
@@ -42,6 +44,11 @@ async function fetchGenres(): Promise<TmdbGenre[]> {
 }
 
 const VISIBLE_COUNT = 5;
+
+// helper για το department
+function getDepartment(p: TmdbPerson): string {
+  return p.known_for_department ?? p.knownForDepartment ?? "";
+}
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -104,10 +111,8 @@ export default function HomePage() {
   //  Utility: parse numeric filters
   // ===============================
   const getNumericFilters = () => {
-    const numericYearFrom =
-      yearFrom.trim() !== "" ? Number(yearFrom) : null;
-    const numericYearTo =
-      yearTo.trim() !== "" ? Number(yearTo) : null;
+    const numericYearFrom = yearFrom.trim() !== "" ? Number(yearFrom) : null;
+    const numericYearTo = yearTo.trim() !== "" ? Number(yearTo) : null;
     const numericMinRating =
       minRating.trim() !== "" ? Number(minRating) : null;
 
@@ -140,9 +145,7 @@ export default function HomePage() {
       setMoviesByGenre((prev) => ({
         ...prev,
         [genreId]:
-          pageToLoad === 1
-            ? results
-            : [...(prev[genreId] || []), ...results],
+          pageToLoad === 1 ? results : [...(prev[genreId] || []), ...results],
       }));
 
       setPageByGenre((prev) => ({ ...prev, [genreId]: pageToLoad }));
@@ -209,7 +212,7 @@ export default function HomePage() {
     const timeout = setTimeout(() => {
       searchPerson(actorQuery).then((list) => {
         setActorSuggestions(
-          list.filter((p) => p.known_for_department === "Acting")
+          list.filter((p) => getDepartment(p) === "Acting")
         );
       });
     }, 300);
@@ -229,7 +232,7 @@ export default function HomePage() {
     const timeout = setTimeout(() => {
       searchPerson(directorQuery).then((list) => {
         setDirectorSuggestions(
-          list.filter((p) => p.known_for_department === "Directing")
+          list.filter((p) => getDepartment(p) === "Directing")
         );
       });
     }, 300);
@@ -281,9 +284,7 @@ export default function HomePage() {
     const page = pageByGenre[genreId] ?? 1;
     const totalPages = totalPagesByGenre[genreId] ?? 1;
 
-    return (
-      offset + VISIBLE_COUNT < movies.length || page < totalPages
-    );
+    return offset + VISIBLE_COUNT < movies.length || page < totalPages;
   };
 
   // Genres που φαίνονται στο κέντρο
@@ -299,7 +300,10 @@ export default function HomePage() {
         gap: "24px",
         padding: "40px 24px",
         color: "white",
-        width: "100%",
+        // full-bleed ώστε το sidebar να πάει πιο αριστερά
+        width: "100vw",
+        marginLeft: "calc(50% - 50vw)",
+        marginRight: "calc(50% - 50vw)",
       }}
     >
       {/* ================== SIDEBAR ================== */}
@@ -666,7 +670,9 @@ export default function HomePage() {
           <p style={{ color: "#ff6b6b", marginBottom: "16px" }}>{error}</p>
         )}
         {initialLoading && !error && (
-          <p style={{ opacity: 0.8, marginBottom: "16px" }}>Loading movies...</p>
+          <p style={{ opacity: 0.8, marginBottom: "16px" }}>
+            Loading movies...
+          </p>
         )}
 
         {/* GENRE ROWS */}
@@ -754,7 +760,8 @@ export default function HomePage() {
                       style={{
                         cursor: "pointer",
                         textAlign: "center",
-                        transition: "transform 0.2s ease, opacity 0.2s ease",
+                        transition:
+                          "transform 0.2s ease, opacity 0.2s ease",
                       }}
                       onMouseEnter={(e) => {
                         (e.currentTarget as HTMLDivElement).style.transform =
