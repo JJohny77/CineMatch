@@ -1,9 +1,5 @@
 // src/api/movies.ts
-
-// =========================
-// CONSTANTS
-// =========================
-const API_URL = "http://localhost:8080";
+import api from "./httpClient";
 
 // =========================
 // TYPES
@@ -65,13 +61,14 @@ export type ExploreParams = {
 export async function fetchTrending(
   timeWindow: "day" | "week" = "day"
 ): Promise<TrendingMovie[]> {
-  const response = await fetch(
-    `${API_URL}/movies/trending?time_window=${timeWindow}`
+  const response = await api.get<TrendingMovie[]>(
+    "/movies/trending",
+    {
+      params: { time_window: timeWindow },
+    }
   );
 
-  if (!response.ok) throw new Error("Failed to fetch trending movies");
-
-  return response.json();
+  return response.data;
 }
 
 // =========================
@@ -80,11 +77,14 @@ export async function fetchTrending(
 export async function fetchTrendingActors(
   timeWindow: "day" | "week" = "day"
 ) {
-  const res = await fetch(
-    `${API_URL}/movies/trending-actors?time_window=${timeWindow}`
+  const response = await api.get<TrendingPerson[]>(
+    "/movies/trending-actors",
+    {
+      params: { time_window: timeWindow },
+    }
   );
-  if (!res.ok) throw new Error("Failed to fetch trending actors");
-  return res.json();
+
+  return response.data;
 }
 
 // =========================
@@ -93,11 +93,14 @@ export async function fetchTrendingActors(
 export async function fetchTrendingDirectors(
   timeWindow: "day" | "week" = "week"
 ) {
-  const res = await fetch(
-    `${API_URL}/movies/trending-directors?time_window=${timeWindow}`
+  const response = await api.get<TrendingPerson[]>(
+    "/movies/trending-directors",
+    {
+      params: { time_window: timeWindow },
+    }
   );
-  if (!res.ok) throw new Error("Failed to fetch trending directors");
-  return res.json();
+
+  return response.data;
 }
 
 // =========================
@@ -106,22 +109,20 @@ export async function fetchTrendingDirectors(
 export async function fetchExplore(
   params: ExploreParams = {}
 ): Promise<ExploreResponse> {
-  const searchParams = new URLSearchParams();
+  const query: Record<string, string> = {};
 
-  searchParams.set("page", params.page ? String(params.page) : "1");
-  if (params.sortBy) searchParams.set("sortBy", params.sortBy);
-  if (params.yearFrom != null) searchParams.set("yearFrom", String(params.yearFrom));
-  if (params.yearTo != null) searchParams.set("yearTo", String(params.yearTo));
-  if (params.minRating != null) searchParams.set("minRating", String(params.minRating));
+  query.page = params.page ? String(params.page) : "1";
+  if (params.sortBy) query.sortBy = params.sortBy;
+  if (params.yearFrom != null) query.yearFrom = String(params.yearFrom);
+  if (params.yearTo != null) query.yearTo = String(params.yearTo);
+  if (params.minRating != null) query.minRating = String(params.minRating);
+  if (params.castId != null) query.castId = String(params.castId);
+  if (params.crewId != null) query.crewId = String(params.crewId);
+  if (params.genreId != null) query.genreId = String(params.genreId);
 
-  if (params.castId != null) searchParams.set("castId", String(params.castId));
-  if (params.crewId != null) searchParams.set("crewId", String(params.crewId));
-  if (params.genreId != null) searchParams.set("genreId", String(params.genreId));
+  const response = await api.get<ExploreResponse>("/movies/explore", {
+    params: query,
+  });
 
-  const url = `${API_URL}/movies/explore?${searchParams.toString()}`;
-
-  const response = await fetch(url);
-  if (!response.ok) throw new Error("Failed to explore movies");
-
-  return response.json();
+  return response.data;
 }

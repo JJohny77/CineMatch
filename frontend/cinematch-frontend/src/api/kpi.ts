@@ -1,7 +1,5 @@
 // src/api/kpi.ts
-import axios from "axios";
-
-const API_URL = "http://localhost:8080";
+import api from "./httpClient";
 
 export type RawKpiResponse = any;
 
@@ -71,8 +69,8 @@ function extractScore(data: RawKpiResponse): number {
 export async function fetchStarPower(
   movieId: string | number
 ): Promise<number> {
-  const response = await axios.get<RawKpiResponse>(
-    `${API_URL}/kpi/star-power/movie/${movieId}`
+  const response = await api.get<RawKpiResponse>(
+    `/kpi/star-power/movie/${movieId}`
   );
   return extractScore(response.data);
 }
@@ -81,8 +79,8 @@ export async function fetchStarPower(
 export async function fetchAudienceEngagement(
   movieId: string | number
 ): Promise<number> {
-  const response = await axios.get<RawKpiResponse>(
-    `${API_URL}/kpi/audience-engagement/${movieId}`
+  const response = await api.get<RawKpiResponse>(
+    `/kpi/audience-engagement/${movieId}`
   );
   return extractScore(response.data);
 }

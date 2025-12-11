@@ -1,10 +1,8 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import SentimentWidget from "../components/SentimentWidget";
-import {
-  fetchStarPower,
-  fetchAudienceEngagement,
-} from "../api/kpi";
+import { fetchStarPower, fetchAudienceEngagement } from "../api/kpi";
+import api from "../api/httpClient"; // ✅ Χρησιμοποιούμε τον axios client με interceptor
 
 type MovieDetails = {
   title: string;
@@ -60,33 +58,27 @@ export default function MovieDetailsPage() {
       error: null,
     });
 
-    // --------- Movie details + videos ----------
+    // --------- Movie details + videos (ΜΕ JWT) ----------
     Promise.all([
-      fetch(`http://localhost:8080/movies/${id}`),
-      fetch(`http://localhost:8080/movies/${id}/videos`),
+      api.get<MovieDetails>(`/movies/${id}`),
+      api.get<MovieVideo[]>(`/movies/${id}/videos`),
     ])
-      .then(async ([detailsRes, videosRes]) => {
-        // DETAILS
-        if (!detailsRes.ok) throw new Error("Movie not found");
-        const detailsData: MovieDetails = await detailsRes.json();
+      .then(([detailsRes, videosRes]) => {
+        const detailsData = detailsRes.data;
         setMovie(detailsData);
 
-        // VIDEOS
-        if (videosRes.ok) {
-          const videos: MovieVideo[] = await videosRes.json();
+        const videos = videosRes.data || [];
+        const youtube = videos.filter(
+          (v) => v.site === "YouTube" && v.type === "Trailer"
+        );
 
-          const youtube = videos.filter(
-            (v) => v.site === "YouTube" && v.type === "Trailer"
-          );
+        if (youtube.length > 0) {
+          const official =
+            youtube.find((v) =>
+              v.name.toLowerCase().includes("official")
+            ) || youtube[0];
 
-          if (youtube.length > 0) {
-            const official =
-              youtube.find((v) =>
-                v.name.toLowerCase().includes("official")
-              ) || youtube[0];
-
-            setTrailerKey(official.key);
-          }
+          setTrailerKey(official.key);
         }
 
         setLoading(false);
@@ -99,10 +91,7 @@ export default function MovieDetailsPage() {
       });
 
     // --------- KPIs (Star Power & Audience Engagement) ----------
-    Promise.all([
-      fetchStarPower(id),
-      fetchAudienceEngagement(id),
-    ])
+    Promise.all([fetchStarPower(id), fetchAudienceEngagement(id)])
       .then(([starPower, audienceEngagement]) => {
         setKpis({
           starPower,
@@ -286,8 +275,8 @@ export default function MovieDetailsPage() {
                       marginTop: "4px",
                     }}
                   >
-                    Συνδυάζει δημοφιλία ηθοποιών, βραβεία και buzz
-                    γύρω από το cast.
+                    Συνδυάζει δημοφιλία ηθοποιών, βραβεία και buzz γύρω
+                    από το cast.
                   </p>
                 </div>
 
@@ -323,8 +312,8 @@ export default function MovieDetailsPage() {
                       marginTop: "4px",
                     }}
                   >
-                    Δείχνει πόσο ενεργά ασχολείται το κοινό με την
-                    ταινία (ψήφοι, reviews, social activity).
+                    Δείχνει πόσο ενεργά ασχολείται το κοινό με την ταινία
+                    (ψήφοι, reviews, social activity).
                   </p>
                 </div>
               </div>
@@ -339,7 +328,9 @@ export default function MovieDetailsPage() {
           </ul>
 
           <h3 style={{ marginTop: "30px" }}>Overview</h3>
-          <p style={{ lineHeight: "1.7", opacity: 0.9 }}>{movie.overview}</p>
+          <p style={{ lineHeight: "1.7", opacity: 0.9 }}>
+            {movie.overview}
+          </p>
           <div style={{ marginTop: "40px" }}>
             <SentimentWidget />
           </div>
