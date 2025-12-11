@@ -1,17 +1,20 @@
 package com.cinematch.backend.quiz.controller;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import java.util.List;
-import java.util.ArrayList;
+import com.cinematch.backend.model.User;
+import com.cinematch.backend.model.UserEventType;
 import com.cinematch.backend.quiz.dto.*;
 import com.cinematch.backend.quiz.service.QuizService;
 import com.cinematch.backend.repository.UserRepository;
+import com.cinematch.backend.service.CurrentUserService;
+import com.cinematch.backend.service.UserEventService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
 
 @RequiredArgsConstructor
 @RestController
@@ -20,6 +23,8 @@ public class QuizController {
 
     private final QuizService quizService;
     private final UserRepository userRepository;
+    private final UserEventService userEventService;
+    private final CurrentUserService currentUserService;
 
     // ================================
     // US21 — Start Quiz
@@ -45,6 +50,21 @@ public class QuizController {
         // ΠΑΝΤΑ δίνουμε την πραγματική σωστή απάντηση
         String correct = quizService.getCorrectAnswer(request.getQuestion());
 
+        // QUIZ_CORRECT / QUIZ_WRONG event
+        User user = currentUserService.getCurrentUserOrNull();
+        if (user != null) {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("question", request.getQuestion());
+            payload.put("selectedOption", request.getSelectedOption());
+            payload.put("correctAnswer", correct);
+
+            userEventService.logEvent(
+                    user,
+                    isCorrect ? UserEventType.QUIZ_CORRECT : UserEventType.QUIZ_WRONG,
+                    payload
+            );
+        }
+
         return ResponseEntity.ok(
                 new SubmitAnswerResponse(
                         isCorrect,
@@ -54,7 +74,6 @@ public class QuizController {
                 )
         );
     }
-
 
     @PostMapping("/finish")
     public ResponseEntity<FinishQuizResponse> finishQuiz(
