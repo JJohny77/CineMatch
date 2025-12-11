@@ -16,7 +16,8 @@ import LeaderboardPage from "./pages/LeaderboardPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import UploadPage from "./pages/UploadPage";
-import GalleryPage from "./pages/GalleryPage";   // <-- NEW IMPORT
+import GalleryPage from "./pages/GalleryPage";
+import ActorPage from "./pages/ActorPage";
 
 const App: React.FC = () => {
   return (
@@ -45,7 +46,8 @@ const App: React.FC = () => {
 
             <Route path="/upload" element={<UploadPage />} />
 
-            <Route path="/gallery" element={<GalleryPage />} /> {/* <-- NEW ROUTE */}
+            <Route path="/gallery" element={<GalleryPage />} />
+            <Route path="/actor/:id" element={<ActorPage />} />
           </Routes>
         </div>
       </div>
