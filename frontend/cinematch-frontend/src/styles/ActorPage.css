@@ -1,0 +1,58 @@
+.actor-page-container {
+  color: white;
+  max-width: 900px;
+  margin: auto;
+  padding: 20px;
+}
+
+.actor-header {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.actor-poster {
+  width: 250px;
+  border-radius: 10px;
+}
+
+.actor-info h1 {
+  margin: 0;
+  font-size: 32px;
+}
+
+.actor-section {
+  margin-top: 40px;
+}
+
+.known-for-carousel {
+  display: flex;
+  overflow-x: auto;
+  gap: 15px;
+  padding-bottom: 10px;
+}
+
+.known-for-item {
+  min-width: 150px;
+  cursor: pointer;
+}
+
+.known-for-item img {
+  width: 150px;
+  border-radius: 8px;
+}
+
+.filmography-list {
+  list-style: none;
+  padding: 0;
+}
+
+.filmography-item {
+  padding: 10px 0;
+  border-bottom: 1px solid #333;
+  cursor: pointer;
+}
+
+.filmography-item:hover {
+  color: #0dcaf0;
+}
