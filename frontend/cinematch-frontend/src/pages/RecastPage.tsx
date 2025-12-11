@@ -1,11 +1,22 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
+const API_BASE_URL = "http://localhost:8080";
 
 export default function FaceIdentifyPage() {
+  const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<any[]>([]);
+
+  // Redirect if no token
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+    }
+  }, [navigate]);
 
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
@@ -17,6 +28,13 @@ export default function FaceIdentifyPage() {
       return;
     }
 
+    // Αν δεν υπάρχει token → redirect σε login (όπως στο QuizPage)
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
     const formData = new FormData();
     formData.append("image", file);
 
@@ -24,8 +42,14 @@ export default function FaceIdentifyPage() {
       setLoading(true);
 
       const res = await axios.post(
-        "http://localhost:8080/ai/face/identify",
-        formData
+        `${API_BASE_URL}/ai/face/identify`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
 
       setResults(res.data); // ARRAY of results

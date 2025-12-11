@@ -18,6 +18,7 @@ import RegisterPage from "./pages/RegisterPage";
 import UploadPage from "./pages/UploadPage";
 import GalleryPage from "./pages/GalleryPage";
 import ActorPage from "./pages/ActorPage";
+import DirectorPage from "./pages/DirectorPage";
 
 const App: React.FC = () => {
   return (
@@ -48,6 +49,7 @@ const App: React.FC = () => {
 
             <Route path="/gallery" element={<GalleryPage />} />
             <Route path="/actor/:id" element={<ActorPage />} />
+            <Route path="/director/:id" element={<DirectorPage />} />
           </Routes>
         </div>
       </div>
