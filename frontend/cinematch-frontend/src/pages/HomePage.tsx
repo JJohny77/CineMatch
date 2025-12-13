@@ -1,5 +1,5 @@
 // src/pages/HomePage.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   fetchExplore,
@@ -11,7 +11,6 @@ import {
 type TmdbPerson = {
   id: number;
   name: string;
-  // Υποστηρίζουμε ΚΑΙ snake_case ΚΑΙ camelCase
   known_for_department?: string;
   knownForDepartment?: string;
 };
@@ -52,6 +51,13 @@ function getDepartment(p: TmdbPerson): string {
 
 export default function HomePage() {
   const navigate = useNavigate();
+
+  // ✅ όταν ο χρήστης αλλάξει κάτι, στο επόμενο reload θα στείλουμε event=true ΜΟΝΟ 1 φορά
+  const shouldLogNextReload = useRef(false);
+
+  const markUserAction = () => {
+    shouldLogNextReload.current = true;
+  };
 
   // Genres sidebar
   const [genres, setGenres] = useState<TmdbGenre[]>([]);
@@ -122,7 +128,11 @@ export default function HomePage() {
   // ===============================
   //  Load movies for a single genre row
   // ===============================
-  const loadGenreMovies = async (genreId: number, pageToLoad: number) => {
+  const loadGenreMovies = async (
+    genreId: number,
+    pageToLoad: number,
+    event: boolean
+  ) => {
     const { numericYearFrom, numericYearTo, numericMinRating } =
       getNumericFilters();
 
@@ -138,6 +148,7 @@ export default function HomePage() {
         castId: actorId ?? undefined,
         crewId: directorId ?? undefined,
         genreId,
+        event, // ✅ μόνο όταν θέλουμε να γραφτεί CHOOSE_FILTER
       });
 
       const results = data.results || [];
@@ -185,9 +196,15 @@ export default function HomePage() {
       ? [selectedGenreId]
       : genres.map((g) => g.id);
 
-    Promise.all(genreIdsToLoad.map((id) => loadGenreMovies(id, 1))).finally(
-      () => setInitialLoading(false)
-    );
+    // ✅ αν είναι user action -> γράφουμε event=true ΜΟΝΟ στο 1ο request
+    const logThisReload = shouldLogNextReload.current;
+    shouldLogNextReload.current = false;
+
+    Promise.all(
+      genreIdsToLoad.map((id, idx) =>
+        loadGenreMovies(id, 1, logThisReload && idx === 0)
+      )
+    ).finally(() => setInitialLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     sortBy,
@@ -211,9 +228,7 @@ export default function HomePage() {
 
     const timeout = setTimeout(() => {
       searchPerson(actorQuery).then((list) => {
-        setActorSuggestions(
-          list.filter((p) => getDepartment(p) === "Acting")
-        );
+        setActorSuggestions(list.filter((p) => getDepartment(p) === "Acting"));
       });
     }, 300);
 
@@ -267,7 +282,8 @@ export default function HomePage() {
     }
 
     if (page < totalPages && !rowLoading[genreId]) {
-      await loadGenreMovies(genreId, page + 1);
+      // ✅ pagination -> event=false
+      await loadGenreMovies(genreId, page + 1, false);
       setOffsetByGenre((prev) => ({
         ...prev,
         [genreId]: (prev[genreId] ?? 0) + VISIBLE_COUNT,
@@ -275,8 +291,7 @@ export default function HomePage() {
     }
   };
 
-  const canGoPrev = (genreId: number) =>
-    (offsetByGenre[genreId] ?? 0) > 0;
+  const canGoPrev = (genreId: number) => (offsetByGenre[genreId] ?? 0) > 0;
 
   const canGoNext = (genreId: number) => {
     const movies = moviesByGenre[genreId] || [];
@@ -300,7 +315,6 @@ export default function HomePage() {
         gap: "24px",
         padding: "40px 24px",
         color: "white",
-        // full-bleed ώστε το sidebar να πάει πιο αριστερά
         width: "100vw",
         marginLeft: "calc(50% - 50vw)",
         marginRight: "calc(50% - 50vw)",
@@ -324,15 +338,17 @@ export default function HomePage() {
           }}
         >
           <button
-            onClick={() => setSelectedGenreId(null)}
+            onClick={() => {
+              markUserAction();
+              setSelectedGenreId(null);
+            }}
             style={{
               textAlign: "left",
               padding: "8px 12px",
               borderRadius: "6px",
               border: "none",
               cursor: "pointer",
-              background:
-                selectedGenreId === null ? "#e50914" : "transparent",
+              background: selectedGenreId === null ? "#e50914" : "transparent",
               color: selectedGenreId === null ? "white" : "#ddd",
               fontWeight: selectedGenreId === null ? "bold" : "normal",
             }}
@@ -342,15 +358,17 @@ export default function HomePage() {
           {genres.map((g) => (
             <button
               key={g.id}
-              onClick={() => setSelectedGenreId(g.id)}
+              onClick={() => {
+                markUserAction();
+                setSelectedGenreId(g.id);
+              }}
               style={{
                 textAlign: "left",
                 padding: "8px 12px",
                 borderRadius: "6px",
                 border: "none",
                 cursor: "pointer",
-                background:
-                  selectedGenreId === g.id ? "#e50914" : "transparent",
+                background: selectedGenreId === g.id ? "#e50914" : "transparent",
                 color: selectedGenreId === g.id ? "white" : "#ddd",
                 fontWeight: selectedGenreId === g.id ? "bold" : "normal",
               }}
@@ -363,7 +381,6 @@ export default function HomePage() {
 
       {/* ================== MAIN CONTENT ================== */}
       <main>
-        {/* HERO με CineMatch + Explore */}
         <div
           style={{
             textAlign: "center",
@@ -427,7 +444,10 @@ export default function HomePage() {
             </label>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
+              onChange={(e) => {
+                markUserAction();
+                setSortBy(e.target.value);
+              }}
               style={{
                 width: "100%",
                 padding: "8px 10px",
@@ -449,19 +469,16 @@ export default function HomePage() {
 
           {/* Year From */}
           <div style={{ minWidth: "120px" }}>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "6px",
-                fontSize: "14px",
-              }}
-            >
+            <label style={{ display: "block", marginBottom: "6px", fontSize: "14px" }}>
               Year from
             </label>
             <input
               type="number"
               value={yearFrom}
-              onChange={(e) => setYearFrom(e.target.value)}
+              onChange={(e) => {
+                markUserAction();
+                setYearFrom(e.target.value);
+              }}
               placeholder="e.g. 2000"
               style={{
                 width: "100%",
@@ -477,19 +494,16 @@ export default function HomePage() {
 
           {/* Year To */}
           <div style={{ minWidth: "120px" }}>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "6px",
-                fontSize: "14px",
-              }}
-            >
+            <label style={{ display: "block", marginBottom: "6px", fontSize: "14px" }}>
               Year to
             </label>
             <input
               type="number"
               value={yearTo}
-              onChange={(e) => setYearTo(e.target.value)}
+              onChange={(e) => {
+                markUserAction();
+                setYearTo(e.target.value);
+              }}
               placeholder="e.g. 2025"
               style={{
                 width: "100%",
@@ -505,13 +519,7 @@ export default function HomePage() {
 
           {/* Min Rating */}
           <div style={{ minWidth: "140px" }}>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "6px",
-                fontSize: "14px",
-              }}
-            >
+            <label style={{ display: "block", marginBottom: "6px", fontSize: "14px" }}>
               Min rating (0–10)
             </label>
             <input
@@ -520,7 +528,10 @@ export default function HomePage() {
               max={10}
               step={0.1}
               value={minRating}
-              onChange={(e) => setMinRating(e.target.value)}
+              onChange={(e) => {
+                markUserAction();
+                setMinRating(e.target.value);
+              }}
               placeholder="e.g. 7.5"
               style={{
                 width: "100%",
@@ -536,19 +547,14 @@ export default function HomePage() {
 
           {/* Actor */}
           <div style={{ minWidth: "200px", position: "relative" }}>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "6px",
-                fontSize: "14px",
-              }}
-            >
+            <label style={{ display: "block", marginBottom: "6px", fontSize: "14px" }}>
               Actors
             </label>
             <input
               type="text"
               value={actorQuery}
               onChange={(e) => {
+                markUserAction();
                 setActorQuery(e.target.value);
                 setActorId(null);
               }}
@@ -582,6 +588,7 @@ export default function HomePage() {
                   <div
                     key={p.id}
                     onClick={() => {
+                      markUserAction();
                       setActorId(p.id);
                       setActorQuery(p.name);
                       setActorSuggestions([]);
@@ -601,19 +608,14 @@ export default function HomePage() {
 
           {/* Director */}
           <div style={{ minWidth: "200px", position: "relative" }}>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "6px",
-                fontSize: "14px",
-              }}
-            >
+            <label style={{ display: "block", marginBottom: "6px", fontSize: "14px" }}>
               Directors
             </label>
             <input
               type="text"
               value={directorQuery}
               onChange={(e) => {
+                markUserAction();
                 setDirectorQuery(e.target.value);
                 setDirectorId(null);
               }}
@@ -647,6 +649,7 @@ export default function HomePage() {
                   <div
                     key={p.id}
                     onClick={() => {
+                      markUserAction();
                       setDirectorId(p.id);
                       setDirectorQuery(p.name);
                       setDirectorSuggestions([]);
@@ -665,26 +668,18 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* GLOBAL ERROR / LOADING */}
-        {error && (
-          <p style={{ color: "#ff6b6b", marginBottom: "16px" }}>{error}</p>
-        )}
+        {error && <p style={{ color: "#ff6b6b", marginBottom: "16px" }}>{error}</p>}
         {initialLoading && !error && (
-          <p style={{ opacity: 0.8, marginBottom: "16px" }}>
-            Loading movies...
-          </p>
+          <p style={{ opacity: 0.8, marginBottom: "16px" }}>Loading movies...</p>
         )}
 
-        {/* GENRE ROWS */}
         {!initialLoading &&
           visibleGenres.map((genre) => {
             const movies = moviesByGenre[genre.id] || [];
             const offset = offsetByGenre[genre.id] ?? 0;
             const visible = movies.slice(offset, offset + VISIBLE_COUNT);
 
-            if (movies.length === 0) {
-              return null;
-            }
+            if (movies.length === 0) return null;
 
             return (
               <section key={genre.id} style={{ marginBottom: "40px" }}>
@@ -715,9 +710,7 @@ export default function HomePage() {
                         height: "32px",
                         borderRadius: "16px",
                         border: "none",
-                        cursor: canGoPrev(genre.id)
-                          ? "pointer"
-                          : "default",
+                        cursor: canGoPrev(genre.id) ? "pointer" : "default",
                         background: canGoPrev(genre.id) ? "#333" : "#222",
                         color: "white",
                         opacity: canGoPrev(genre.id) ? 1 : 0.5,
@@ -733,9 +726,7 @@ export default function HomePage() {
                         height: "32px",
                         borderRadius: "16px",
                         border: "none",
-                        cursor: canGoNext(genre.id)
-                          ? "pointer"
-                          : "default",
+                        cursor: canGoNext(genre.id) ? "pointer" : "default",
                         background: canGoNext(genre.id) ? "#333" : "#222",
                         color: "white",
                         opacity: canGoNext(genre.id) ? 1 : 0.5,
@@ -760,20 +751,15 @@ export default function HomePage() {
                       style={{
                         cursor: "pointer",
                         textAlign: "center",
-                        transition:
-                          "transform 0.2s ease, opacity 0.2s ease",
+                        transition: "transform 0.2s ease, opacity 0.2s ease",
                       }}
                       onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLDivElement).style.transform =
-                          "scale(1.03)";
-                        (e.currentTarget as HTMLDivElement).style.opacity =
-                          "0.95";
+                        (e.currentTarget as HTMLDivElement).style.transform = "scale(1.03)";
+                        (e.currentTarget as HTMLDivElement).style.opacity = "0.95";
                       }}
                       onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLDivElement).style.transform =
-                          "scale(1)";
-                        (e.currentTarget as HTMLDivElement).style.opacity =
-                          "1";
+                        (e.currentTarget as HTMLDivElement).style.transform = "scale(1)";
+                        (e.currentTarget as HTMLDivElement).style.opacity = "1";
                       }}
                     >
                       {movie.poster_path ? (
@@ -799,32 +785,16 @@ export default function HomePage() {
                         />
                       )}
 
-                      <p
-                        style={{
-                          marginTop: "4px",
-                          fontSize: "14px",
-                          fontWeight: 500,
-                        }}
-                      >
+                      <p style={{ marginTop: "4px", fontSize: "14px", fontWeight: 500 }}>
                         {movie.title}
                       </p>
                       {movie.release_date && (
-                        <p
-                          style={{
-                            fontSize: "12px",
-                            opacity: 0.7,
-                          }}
-                        >
+                        <p style={{ fontSize: "12px", opacity: 0.7 }}>
                           {movie.release_date}
                         </p>
                       )}
                       {movie.vote_average != null && (
-                        <p
-                          style={{
-                            fontSize: "12px",
-                            opacity: 0.8,
-                          }}
-                        >
+                        <p style={{ fontSize: "12px", opacity: 0.8 }}>
                           ⭐ {movie.vote_average.toFixed(1)}
                         </p>
                       )}

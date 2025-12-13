@@ -75,14 +75,8 @@ public class MovieController {
      * US45 – Explore Movies
      * GET /movies/explore
      *
-     * Filters:
-     * - page
-     * - sortBy
-     * - yearFrom / yearTo
-     * - minRating
-     * - castId (actor)
-     * - crewId (director)
-     * - genreId
+     * + event=true  -> γράφει CHOOSE_FILTER
+     * + event=false -> ΔΕΝ γράφει (system loading / refresh / pagination)
      */
     @GetMapping("/explore")
     public MovieSearchResponse exploreMovies(
@@ -93,7 +87,8 @@ public class MovieController {
             @RequestParam(required = false) Double minRating,
             @RequestParam(required = false) Long castId,
             @RequestParam(required = false) Long crewId,
-            @RequestParam(required = false) Integer genreId
+            @RequestParam(required = false) Integer genreId,
+            @RequestParam(name = "event", defaultValue = "false") boolean event
     ) {
         MovieSearchResponse response = tmdbService.exploreMovies(
                 page,
@@ -107,35 +102,39 @@ public class MovieController {
         );
 
         // ==========================
-        // CHOOSE_FILTER event
+        // CHOOSE_FILTER event (ΜΟΝΟ αν το ζητήσει το frontend)
         // ==========================
-        User user = currentUserService.getCurrentUserOrNull();
+        if (event) {
+            User user = currentUserService.getCurrentUserOrNull();
 
-        boolean hasAnyFilter =
-                yearFrom != null ||
-                        yearTo != null ||
-                        minRating != null ||
-                        castId != null ||
-                        crewId != null ||
-                        genreId != null;
+            boolean hasRealFilter =
+                    yearFrom != null ||
+                            yearTo != null ||
+                            minRating != null ||
+                            castId != null ||
+                            crewId != null ||
+                            genreId != null;
 
-        if (user != null && hasAnyFilter) {
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("context", "MOVIE_EXPLORE");
-            payload.put("page", page);
-            payload.put("sortBy", sortBy);
-            if (yearFrom != null) payload.put("yearFrom", yearFrom);
-            if (yearTo != null) payload.put("yearTo", yearTo);
-            if (minRating != null) payload.put("minRating", minRating);
-            if (castId != null) payload.put("castId", castId);
-            if (crewId != null) payload.put("crewId", crewId);
-            if (genreId != null) payload.put("genreId", genreId);
+            // (προαιρετικά) να αγνοούμε pagination events
+            if (user != null && hasRealFilter && page == 1) {
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("context", "MOVIE_EXPLORE");
+                payload.put("page", page);
+                payload.put("sortBy", sortBy);
 
-            userEventService.logEvent(
-                    user,
-                    UserEventType.CHOOSE_FILTER,
-                    payload
-            );
+                if (yearFrom != null) payload.put("yearFrom", yearFrom);
+                if (yearTo != null) payload.put("yearTo", yearTo);
+                if (minRating != null) payload.put("minRating", minRating);
+                if (castId != null) payload.put("castId", castId);
+                if (crewId != null) payload.put("crewId", crewId);
+                if (genreId != null) payload.put("genreId", genreId);
+
+                userEventService.logEvent(
+                        user,
+                        UserEventType.CHOOSE_FILTER,
+                        payload
+                );
+            }
         }
 
         return response;
@@ -164,7 +163,7 @@ public class MovieController {
         );
     }
 
-        /**
+    /**
      * US18 – Movie Videos (trailers)
      * GET /movies/{id}/videos
      */
@@ -178,9 +177,6 @@ public class MovieController {
     /**
      * US18 – Movie details
      * GET /movies/{id}
-     *
-     * Optional query param "source" για να ξέρουμε από πού άνοιξε η ταινία
-     * (π.χ. "SEARCH", "HOME", "TRENDING", "EXPLORE" κ.λπ.).
      */
     @GetMapping("/{id}")
     public ResponseEntity<MovieDetailsDto> getMovieDetails(
