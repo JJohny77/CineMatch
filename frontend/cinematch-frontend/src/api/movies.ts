@@ -53,6 +53,9 @@ export type ExploreParams = {
   castId?: number | null;
   crewId?: number | null;
   genreId?: number | null;
+
+  // ✅ αν true -> backend γράφει CHOOSE_FILTER
+  event?: boolean;
 };
 
 // =========================
@@ -61,12 +64,9 @@ export type ExploreParams = {
 export async function fetchTrending(
   timeWindow: "day" | "week" = "day"
 ): Promise<TrendingMovie[]> {
-  const response = await api.get<TrendingMovie[]>(
-    "/movies/trending",
-    {
-      params: { time_window: timeWindow },
-    }
-  );
+  const response = await api.get<TrendingMovie[]>("/movies/trending", {
+    params: { time_window: timeWindow },
+  });
 
   return response.data;
 }
@@ -74,15 +74,10 @@ export async function fetchTrending(
 // =========================
 // TRENDING ACTORS
 // =========================
-export async function fetchTrendingActors(
-  timeWindow: "day" | "week" = "day"
-) {
-  const response = await api.get<TrendingPerson[]>(
-    "/movies/trending-actors",
-    {
-      params: { time_window: timeWindow },
-    }
-  );
+export async function fetchTrendingActors(timeWindow: "day" | "week" = "day") {
+  const response = await api.get<TrendingPerson[]>("/movies/trending-actors", {
+    params: { time_window: timeWindow },
+  });
 
   return response.data;
 }
@@ -90,15 +85,10 @@ export async function fetchTrendingActors(
 // =========================
 // TRENDING DIRECTORS
 // =========================
-export async function fetchTrendingDirectors(
-  timeWindow: "day" | "week" = "week"
-) {
-  const response = await api.get<TrendingPerson[]>(
-    "/movies/trending-directors",
-    {
-      params: { time_window: timeWindow },
-    }
-  );
+export async function fetchTrendingDirectors(timeWindow: "day" | "week" = "week") {
+  const response = await api.get<TrendingPerson[]>("/movies/trending-directors", {
+    params: { time_window: timeWindow },
+  });
 
   return response.data;
 }
@@ -106,9 +96,7 @@ export async function fetchTrendingDirectors(
 // =========================
 // EXPLORE MOVIES
 // =========================
-export async function fetchExplore(
-  params: ExploreParams = {}
-): Promise<ExploreResponse> {
+export async function fetchExplore(params: ExploreParams = {}): Promise<ExploreResponse> {
   const query: Record<string, string> = {};
 
   query.page = params.page ? String(params.page) : "1";
@@ -119,6 +107,9 @@ export async function fetchExplore(
   if (params.castId != null) query.castId = String(params.castId);
   if (params.crewId != null) query.crewId = String(params.crewId);
   if (params.genreId != null) query.genreId = String(params.genreId);
+
+  // ✅ μόνο όταν θέλουμε event logging
+  if (params.event) query.event = "true";
 
   const response = await api.get<ExploreResponse>("/movies/explore", {
     params: query,

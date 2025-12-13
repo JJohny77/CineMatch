@@ -17,21 +17,21 @@ public class UserEvent {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;   // αντιστοιχεί στο id (bigint) του πίνακα user_events
+    private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false, length = 50)
+    @Column(nullable = false, length = 50)
     private UserEventType type;
 
-    @Lob
-    @Column(name = "payload", nullable = false)
+    // IMPORTANT: ΜΗΝ είναι @Lob. Θέλουμε TEXT για να μη γίνεται CLOB/LO.
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String payload;
 
     @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt;
 }
