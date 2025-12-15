@@ -5,10 +5,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
 public class RecastResponseDto {
-    private String actor;
-    private double similarity;
-    private long actorId;
+
+    private String actor;      // Όνομα ηθοποιού
+    private double similarity; // Cosine similarity (0..1)
+    private Long actorId;      // ID από τη βάση
+    private String actorImage; // URL εικόνας ηθοποιού
 }

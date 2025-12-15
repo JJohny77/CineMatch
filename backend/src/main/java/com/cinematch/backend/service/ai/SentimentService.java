@@ -18,11 +18,18 @@ public class SentimentService {
     @Value("${huggingface.api.key:}")
     private String apiKey;
 
-    // 🔥 ΣΩΣΤΟ router endpoint (όπως στο Postman)
     private static final String MODEL_URL =
             "https://router.huggingface.co/hf-inference/models/distilbert/distilbert-base-uncased-finetuned-sst-2-english";
 
     public SentimentResponse analyze(String text) {
+
+        // 🔐 Safety check για να μη στέλνουμε άδειο token
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException(
+                    "HuggingFace API key is missing. " +
+                            "Set HUGGINGFACE_API_KEY in your .env or environment."
+            );
+        }
 
         // ---- 1. Payload ----
         JSONObject payload = new JSONObject();
@@ -31,7 +38,11 @@ public class SentimentService {
         // ---- 2. Headers ----
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(apiKey);   // Authorization: Bearer hf_xxx
+        headers.set(HttpHeaders.ACCEPT, "application/json");
+        headers.add("X-Response-Format", "json");
+
+        // Authorization: Bearer hf_xxx
+        headers.setBearerAuth(apiKey);
 
         HttpEntity<String> request = new HttpEntity<>(payload.toString(), headers);
 
@@ -49,30 +60,37 @@ public class SentimentService {
             throw new IllegalStateException("Empty response from HuggingFace");
         }
 
-        // ---- 4. Model loading state ----
+        // HF Router όταν το μοντέλο “ξυπνάει”/φορτώνει
         if (body.contains("\"estimated_time\"") || body.contains("\"error\"")) {
             return new SentimentResponse("loading", 0.0);
         }
 
-        // ---- 5. Parse ----
+        // ---- 4. Parse JSON ----
         JSONArray arr = new JSONArray(body);
-
-        // Η δική σου response είναι flat array: [ {label, score}, {...} ]
         JSONObject bestLabelObj;
 
         Object first = arr.get(0);
+
         if (first instanceof JSONObject) {
             bestLabelObj = (JSONObject) first;
         } else if (first instanceof JSONArray) {
-            // nested case: [ [ {label, score}, ... ] ]
             bestLabelObj = ((JSONArray) first).getJSONObject(0);
         } else {
-            throw new IllegalStateException("Unknown HF response format: " + body);
+            throw new IllegalStateException("Unknown HF format: " + body);
         }
 
-        String label = bestLabelObj.getString("label").toLowerCase();
+        String rawLabel = bestLabelObj.getString("label").toLowerCase(); // "positive" ή "negative"
         double score = bestLabelObj.getDouble("score");
 
-        return new SentimentResponse(label, score);
+        // ---- 5. Neutral Logic ----
+        String finalLabel;
+        if (score < 0.60) {
+            finalLabel = "neutral";
+        } else {
+            finalLabel = rawLabel; // "positive" ή "negative"
+        }
+
+        return new SentimentResponse(finalLabel, score);
     }
 }
+

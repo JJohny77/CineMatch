@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -26,8 +27,7 @@ public class SecurityConfigPlaceholder {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowedOrigins(List.of(
-                "http://localhost:5173",
-                "http://localhost:8080"
+                "http://localhost:5173"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
@@ -47,21 +47,38 @@ public class SecurityConfigPlaceholder {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
+                // Δεν χρησιμοποιούμε session (JWT only)
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
                 .authorizeHttpRequests(auth -> auth
+                        // PUBLIC
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/movies/**").permitAll()
+                        .requestMatchers("/api/actors/**").permitAll()
+                        .requestMatchers("/api/directors/**").permitAll()
+                        .requestMatchers("/kpi/**").permitAll()
                         .requestMatchers("/api/health").permitAll()
-                        .requestMatchers("/content/**").authenticated()   // <-- ALLOW UPLOAD
+
+                        // AUTHENTICATED
                         .requestMatchers("/quiz/**").authenticated()
+                        .requestMatchers("/content/**").authenticated()
                         .requestMatchers("/user/**").authenticated()
                         .requestMatchers("/admin/**").authenticated()
+                        .requestMatchers("/users/**").authenticated()
+
                         .anyRequest().permitAll()
                 )
 
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                // JWT FILTER
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         return http.build();
     }
