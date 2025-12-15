@@ -4,7 +4,7 @@ import com.cinematch.backend.auth.Role;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
@@ -40,4 +40,23 @@ public class User {
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    // =========================
+    // US54: preference profile
+    // =========================
+
+    // JSON array string: [{ "genreId": 28, "score": 3.0 }, ...]
+    @Column(name = "top_genres", columnDefinition = "TEXT")
+    private String topGenres;
+
+    // JSON array string: [{ "personId": 287, "score": 2.0 }, ...]
+    @Column(name = "top_actors", columnDefinition = "TEXT")
+    private String topActors;
+
+    // JSON array string: [{ "personId": 488, "score": 4.0 }, ...]
+    @Column(name = "top_directors", columnDefinition = "TEXT")
+    private String topDirectors;
+
+    @Column(name = "preferences_last_updated")
+    private Instant preferencesLastUpdated;
 }

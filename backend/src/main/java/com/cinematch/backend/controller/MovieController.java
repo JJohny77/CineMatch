@@ -1,12 +1,18 @@
 package com.cinematch.backend.controller;
 
 import com.cinematch.backend.dto.*;
+import com.cinematch.backend.model.User;
+import com.cinematch.backend.model.UserEventType;
+import com.cinematch.backend.service.CurrentUserService;
 import com.cinematch.backend.service.TmdbService;
+import com.cinematch.backend.service.UserEventService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/movies")
@@ -14,6 +20,8 @@ import java.util.List;
 public class MovieController {
 
     private final TmdbService tmdbService;
+    private final CurrentUserService currentUserService;
+    private final UserEventService userEventService;
 
     /**
      * US11 – Search movies
@@ -63,19 +71,12 @@ public class MovieController {
         );
     }
 
-
     /**
      * US45 – Explore Movies
      * GET /movies/explore
      *
-     * Filters:
-     * - page
-     * - sortBy
-     * - yearFrom / yearTo
-     * - minRating
-     * - castId (actor)
-     * - crewId (director)
-     * - genreId
+     * + event=true  -> γράφει CHOOSE_FILTER
+     * + event=false -> ΔΕΝ γράφει (system loading / refresh / pagination)
      */
     @GetMapping("/explore")
     public MovieSearchResponse exploreMovies(
@@ -86,9 +87,10 @@ public class MovieController {
             @RequestParam(required = false) Double minRating,
             @RequestParam(required = false) Long castId,
             @RequestParam(required = false) Long crewId,
-            @RequestParam(required = false) Integer genreId
+            @RequestParam(required = false) Integer genreId,
+            @RequestParam(name = "event", defaultValue = "false") boolean event
     ) {
-        return tmdbService.exploreMovies(
+        MovieSearchResponse response = tmdbService.exploreMovies(
                 page,
                 sortBy,
                 yearFrom,
@@ -98,6 +100,44 @@ public class MovieController {
                 crewId,
                 genreId
         );
+
+        // ==========================
+        // CHOOSE_FILTER event (ΜΟΝΟ αν το ζητήσει το frontend)
+        // ==========================
+        if (event) {
+            User user = currentUserService.getCurrentUserOrNull();
+
+            boolean hasRealFilter =
+                    yearFrom != null ||
+                            yearTo != null ||
+                            minRating != null ||
+                            castId != null ||
+                            crewId != null ||
+                            genreId != null;
+
+            // (προαιρετικά) να αγνοούμε pagination events
+            if (user != null && hasRealFilter && page == 1) {
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("context", "MOVIE_EXPLORE");
+                payload.put("page", page);
+                payload.put("sortBy", sortBy);
+
+                if (yearFrom != null) payload.put("yearFrom", yearFrom);
+                if (yearTo != null) payload.put("yearTo", yearTo);
+                if (minRating != null) payload.put("minRating", minRating);
+                if (castId != null) payload.put("castId", castId);
+                if (crewId != null) payload.put("crewId", crewId);
+                if (genreId != null) payload.put("genreId", genreId);
+
+                userEventService.logEvent(
+                        user,
+                        UserEventType.CHOOSE_FILTER,
+                        payload
+                );
+            }
+        }
+
+        return response;
     }
 
     /**
@@ -139,9 +179,28 @@ public class MovieController {
      * GET /movies/{id}
      */
     @GetMapping("/{id}")
-    public ResponseEntity<MovieDetailsDto> getMovieDetails(@PathVariable("id") Long id) {
-        return ResponseEntity.ok(
-                tmdbService.getMovieDetails(id)
-        );
+    public ResponseEntity<MovieDetailsDto> getMovieDetails(
+            @PathVariable("id") Long id,
+            @RequestParam(name = "source", required = false) String source
+    ) {
+        MovieDetailsDto dto = tmdbService.getMovieDetails(id);
+
+        User user = currentUserService.getCurrentUserOrNull();
+        if (user != null) {
+            String actualSource =
+                    (source != null && !source.isBlank()) ? source : "MOVIE_DETAILS";
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("movieId", id);
+            payload.put("source", actualSource);
+
+            userEventService.logEvent(
+                    user,
+                    UserEventType.OPEN_MOVIE,
+                    payload
+            );
+        }
+
+        return ResponseEntity.ok(dto);
     }
 }

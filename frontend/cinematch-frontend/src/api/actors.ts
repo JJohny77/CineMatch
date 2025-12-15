@@ -1,8 +1,7 @@
-import axios from "axios";
-
-const API_URL = "http://localhost:8080";
+// src/api/actors.ts
+import api from "./httpClient";
 
 export async function getActorDetails(id: number) {
-  const res = await axios.get(`${API_URL}/api/actors/${id}`);
+  const res = await api.get(`/api/actors/${id}`);
   return res.data;
 }
