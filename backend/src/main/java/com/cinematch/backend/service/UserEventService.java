@@ -18,16 +18,16 @@ import java.util.Map;
 @Slf4j
 public class UserEventService {
 
-    private static final int DEDUPE_WINDOW_SECONDS = 5; // παράθυρο 5"
+    private static final int DEDUPE_WINDOW_SECONDS = 5;
+    private static final int PREFS_THROTTLE_SECONDS = 10; // ✅ μην υπολογίζεις preferences σε κάθε click
+    private static final int PREFS_TOP_N = 5;
 
     private final UserEventRepository userEventRepository;
     private final ObjectMapper objectMapper;
 
-    /**
-     * Βασική μέθοδος logging.
-     * - Αν user == null → αγνοούμε.
-     * - Αν υπάρχει ήδη ΙΔΙΟ event (user + type + payload) στα τελευταία 5" → αγνοούμε.
-     */
+    // ✅ add
+    private final UserPreferenceService userPreferenceService;
+
     @Transactional
     public void logEvent(User user, UserEventType type, Map<String, Object> payload) {
         if (user == null) {
@@ -36,15 +36,10 @@ public class UserEventService {
         }
 
         try {
-            // 1) Serialize payload σε JSON
             String payloadJson;
-            if (payload == null || payload.isEmpty()) {
-                payloadJson = "{}";
-            } else {
-                payloadJson = objectMapper.writeValueAsString(payload);
-            }
+            if (payload == null || payload.isEmpty()) payloadJson = "{}";
+            else payloadJson = objectMapper.writeValueAsString(payload);
 
-            // 2) DEDUPE: υπάρχει ήδη ίδιο event τελευταία 5" ;
             Instant threshold = Instant.now().minusSeconds(DEDUPE_WINDOW_SECONDS);
 
             boolean existsRecently =
@@ -56,16 +51,10 @@ public class UserEventService {
                     );
 
             if (existsRecently) {
-                log.debug(
-                        "Skipping duplicate user event {} for user {} (same payload within {}s)",
-                        type,
-                        user.getId(),
-                        DEDUPE_WINDOW_SECONDS
-                );
+                log.debug("Skipping duplicate user event {} for user {}", type, user.getId());
                 return;
             }
 
-            // 3) Αποθήκευση event
             UserEvent event = UserEvent.builder()
                     .user(user)
                     .type(type)
@@ -74,14 +63,22 @@ public class UserEventService {
 
             userEventRepository.save(event);
 
+            // ✅ AUTO-COMPUTE preferences όταν υπάρχει relevant click/filter
+            if (type == UserEventType.CHOOSE_FILTER
+                    || type == UserEventType.OPEN_ACTOR
+                    || type == UserEventType.OPEN_DIRECTOR
+                    || type == UserEventType.OPEN_MOVIE) {
+
+                Instant last = user.getPreferencesLastUpdated();
+                boolean tooSoon = last != null && last.isAfter(Instant.now().minusSeconds(PREFS_THROTTLE_SECONDS));
+
+                if (!tooSoon) {
+                    userPreferenceService.computeAndPersist(user, PREFS_TOP_N);
+                }
+            }
+
         } catch (Exception e) {
-            log.error(
-                    "Failed to log user event {} for user {}: {}",
-                    type,
-                    user.getId(),
-                    e.getMessage(),
-                    e
-            );
+            log.error("Failed to log user event {} for user {}: {}", type, user.getId(), e.getMessage(), e);
         }
     }
 }
