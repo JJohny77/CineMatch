@@ -69,6 +69,7 @@ public class SecurityConfigPlaceholder {
                         .requestMatchers("/content/**").authenticated()
                         .requestMatchers("/user/**").authenticated()
                         .requestMatchers("/admin/**").authenticated()
+                        .requestMatchers("/users/**").authenticated()
 
                         .anyRequest().permitAll()
                 )
