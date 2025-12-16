@@ -15,8 +15,9 @@ import QuizPage from "./pages/QuizPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
-import UploadPage from "./pages/UploadPage";
-import GalleryPage from "./pages/GalleryPage";
+
+import FeedPage from "./pages/FeedPage";
+
 import ActorPage from "./pages/ActorPage";
 import DirectorPage from "./pages/DirectorPage";
 
@@ -45,9 +46,8 @@ const App: React.FC = () => {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
 
-            <Route path="/upload" element={<UploadPage />} />
+            <Route path="/feed" element={<FeedPage />} />
 
-            <Route path="/gallery" element={<GalleryPage />} />
             <Route path="/actor/:id" element={<ActorPage />} />
             <Route path="/director/:id" element={<DirectorPage />} />
           </Routes>
