@@ -1,80 +1,108 @@
 package com.cinematch.backend.quiz.service;
 
+import com.cinematch.backend.dto.MovieResultDto;
+import com.cinematch.backend.dto.UserPreferencesResponseDto;
+import com.cinematch.backend.model.User;
 import com.cinematch.backend.quiz.dto.LeaderboardEntry;
-import java.util.stream.Collectors;
 import com.cinematch.backend.quiz.dto.QuizQuestion;
 import com.cinematch.backend.quiz.dto.QuizResponse;
 import com.cinematch.backend.repository.UserRepository;
+import com.cinematch.backend.service.CurrentUserService;
+import com.cinematch.backend.service.MovieRecommendationService;
+import com.cinematch.backend.service.UserPreferenceService;
+import com.cinematch.backend.service.ai.AiQuizGenerator;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class QuizService {
 
+    private final AiQuizGenerator aiQuizGenerator;
+    private final MovieRecommendationService movieRecommendationService;
+    private final UserPreferenceService userPreferenceService;
+    private final CurrentUserService currentUserService;
+
+    private final Map<Long, Map<String, String>> answerKeyByUser = new ConcurrentHashMap<>();
+    private static final long ANON_USER_KEY = -1L;
+
     // ================================
-    // US21 – Start Quiz
+    // Start Quiz
     // ================================
     public QuizResponse startQuiz() {
 
-        // Παίρνουμε το full pool (με correct answers backend-only)
-        List<FullQuestion> fullPool = getFullQuestionPool();
+        User user = currentUserService.getCurrentUserOrNull();
 
-        // Shuffle
-        Collections.shuffle(fullPool, new Random());
+        UserPreferencesResponseDto prefs = null;
+        List<MovieResultDto> candidates;
 
-        // Πάρε τις πρώτες 10
-        List<FullQuestion> selected = fullPool.subList(0, 10);
+        if (user != null) {
+            // prefs may still be empty if user has no events yet (cold start) -> ok
+            prefs = userPreferenceService.computeAndPersist(user, 5);
+            candidates = movieRecommendationService.getQuizCandidatesForUser(user, 160);
+        } else {
+            candidates = movieRecommendationService.getQuizCandidatesForUser(null, 160);
+        }
 
-        // Μετατροπή σε "safe" QuizQuestion DTO (χωρίς σωστή απάντηση)
+        List<FullQuestion> fullPool = aiQuizGenerator.generateFullQuestions(prefs, candidates, 10);
+
+        // safety fallback (static pool)
+        if (fullPool == null || fullPool.size() < 10) {
+            List<FullQuestion> staticPool = new ArrayList<>(getStaticQuestionPool());
+            Collections.shuffle(staticPool, new Random());
+            fullPool = staticPool.subList(0, Math.min(10, staticPool.size()));
+        }
+
+        long key = (user != null && user.getId() != null) ? user.getId() : ANON_USER_KEY;
+
+        Map<String, String> answerKey = new HashMap<>();
+        for (FullQuestion fq : fullPool) {
+            answerKey.put(fq.question(), fq.correctAnswer());
+        }
+        answerKeyByUser.put(key, answerKey);
+
         List<QuizQuestion> safeQuestions = new ArrayList<>();
-        for (FullQuestion fq : selected) {
+        for (FullQuestion fq : fullPool) {
             List<String> shuffled = new ArrayList<>(fq.options());
             Collections.shuffle(shuffled);
-
-            safeQuestions.add(
-                    new QuizQuestion(fq.question(), shuffled)
-            );
-
+            safeQuestions.add(new QuizQuestion(fq.question(), shuffled));
         }
 
         return new QuizResponse(safeQuestions);
     }
 
-
     // ================================
-    // US22 – Check Answer
+    // Check Answer
     // ================================
     public boolean checkAnswer(String question, String selectedOption) {
-
-        // Βρίσκουμε στο backend ποια είναι η σωστή απάντηση
-        for (FullQuestion fq : getFullQuestionPool()) {
-            if (fq.question().equals(question)) {
-                return fq.correctAnswer().equals(selectedOption);
-            }
-        }
-
-        // Αν δεν βρέθηκε η ερώτηση (δεν θα συμβεί ποτέ στο demo)
-        return false;
+        String correct = getCorrectAnswer(question);
+        return correct != null && correct.equals(selectedOption);
     }
+
     public String getCorrectAnswer(String question) {
-        for (FullQuestion fq : getFullQuestionPool()) {
-            if (fq.question().equals(question)) {
-                return fq.correctAnswer();
-            }
+        User user = currentUserService.getCurrentUserOrNull();
+        long key = (user != null && user.getId() != null) ? user.getId() : ANON_USER_KEY;
+
+        Map<String, String> map = answerKeyByUser.get(key);
+        if (map != null && map.containsKey(question)) return map.get(question);
+
+        // fallback to static pool
+        for (FullQuestion fq : getStaticQuestionPool()) {
+            if (fq.question().equals(question)) return fq.correctAnswer();
         }
+
         throw new RuntimeException("Question not found: " + question);
     }
 
-
     // ================================
-    // BACKEND-ONLY QUESTION POOL
+    // Static pool (last resort)
     // ================================
-    private List<FullQuestion> getFullQuestionPool() {
+    private List<FullQuestion> getStaticQuestionPool() {
 
         List<FullQuestion> list = new ArrayList<>();
 
@@ -140,36 +168,29 @@ public class QuizService {
 
         return list;
     }
-    // ================================
-// US23 — Finish quiz & save score
-// ================================
-    public void saveQuizScore(int score, UserRepository userRepository) {
 
-        // 1. Πάρε email από το security context
+    // ================================
+    // Finish quiz & save score
+    // ================================
+    public void saveQuizScore(int score, UserRepository userRepository) {
         String email = (String) SecurityContextHolder
                 .getContext()
                 .getAuthentication()
                 .getPrincipal();
 
-        // 2. Φέρε τον χρήστη
         com.cinematch.backend.model.User user = userRepository
                 .findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // 3. Πρόσθεσε το score
         user.setQuizScore(user.getQuizScore() + score);
-
-        // 4. Αποθήκευσε
         userRepository.save(user);
     }
 
     public List<LeaderboardEntry> getLeaderboard(UserRepository userRepository) {
         return userRepository.findAll()
                 .stream()
-                .sorted((u1, u2) -> u2.getQuizScore() - u1.getQuizScore()) // descending
+                .sorted((u1, u2) -> u2.getQuizScore() - u1.getQuizScore())
                 .map(u -> new LeaderboardEntry(u.getEmail(), u.getQuizScore()))
                 .collect(Collectors.toList());
     }
-
-
 }
