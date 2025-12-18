@@ -20,7 +20,7 @@ public class MovieRecommendationService {
     private final TmdbService tmdbService;
 
     // -------------------------------------------------------------------------
-    // MERGED LOGIC: Λογική αναζήτησης US58 (CSV) + Κώδικας Main (clean fallback)
+    // FIXED: Recommendations by Genres (NOT comma-AND). We do per-genre discover + merge.
     // -------------------------------------------------------------------------
     public MovieSearchResponse getRecommendationsForUser(User user) {
 
@@ -29,35 +29,103 @@ public class MovieRecommendationService {
         List<PreferenceScoreDto> directors = parse(user.getTopDirectors());
 
         boolean hasData = !genres.isEmpty() || !actors.isEmpty() || !directors.isEmpty();
-
-        // Χρήση του helper από το Main (αντί για τον inline κώδικα του US58)
         if (!hasData) {
             return trendingFallback();
         }
 
-        // Λογική από US58: Πολλαπλά IDs (CSV) και discoverMovies
-        String withGenresCsv = joinIds(genres);
-        String withCastCsv = joinIds(actors);
-        String withCrewCsv = joinIds(directors);
+        Map<Integer, MovieResultDto> unique = new LinkedHashMap<>();
+        Random rnd = new Random();
 
-        MovieSearchResponse discover = tmdbService.discoverMovies(
-                1,
-                "popularity.desc",
-                withGenresCsv,
-                withCastCsv,
-                withCrewCsv
-        );
+        // 1) GENRES (per-genre discover, weighted by score order)
+        // Action first (28) -> more chances to contribute results
+        int maxGenreCalls = 5; // top N genres
+        for (PreferenceScoreDto g : genres.stream().limit(maxGenreCalls).toList()) {
+            if (g.getId() == null) continue;
 
-        // Χρήση του helper από το Main για fallback
-        if (discover == null || discover.getResults() == null || discover.getResults().isEmpty()) {
+            String genreIdStr = String.valueOf(g.getId());
+
+            // 2 pages for top genre, 1 page for the rest (simple weighting)
+            int pages = (g.equals(genres.get(0)) ? 2 : 1);
+
+            for (int p = 0; p < pages; p++) {
+                safeAddDiscover(unique,
+                        1 + rnd.nextInt(2),           // page 1-2
+                        "popularity.desc",
+                        genreIdStr,                  // SINGLE GENRE ID (not CSV)
+                        null,
+                        null
+                );
+            }
+
+            // stop early if we already have enough
+            if (unique.size() >= 60) break;
+        }
+
+        // 2) ACTORS (works well already, keep it as-is)
+        // Use only top few, but keep CSV for cast (it's okay)
+        if (unique.size() < 60 && !actors.isEmpty()) {
+            String withCastCsv = joinIds(actors, 3); // comma is fine here
+            safeAddDiscover(unique, 1, "popularity.desc", null, withCastCsv, null);
+        }
+
+        // 3) DIRECTORS (works well already, keep it as-is)
+        if (unique.size() < 60 && !directors.isEmpty()) {
+            String withCrewCsv = joinIds(directors, 2);
+            safeAddDiscover(unique, 1, "popularity.desc", null, null, withCrewCsv);
+        }
+
+        // 4) Fallback if still very few -> trending fill (NOT replace)
+        if (unique.size() < 20) {
+            MovieSearchResponse tr = trendingFallback();
+            addResults(unique, tr);
+        }
+
+        // Filter out extremely “empty” items (optional but helps UI quality)
+        List<MovieResultDto> results = unique.values().stream()
+                .filter(m -> m != null && m.getTitle() != null && !m.getTitle().isBlank())
+                .filter(m -> m.getPoster_path() != null && !m.getPoster_path().isBlank())
+                .limit(60)
+                .toList();
+
+        MovieSearchResponse out = new MovieSearchResponse();
+        out.setResults(results);
+
+        if (out.getResults() == null || out.getResults().isEmpty()) {
             return trendingFallback();
         }
 
-        return discover;
+        return out;
+    }
+
+    private void safeAddDiscover(
+            Map<Integer, MovieResultDto> unique,
+            int page,
+            String sortBy,
+            String withGenresCsv,
+            String withCastCsv,
+            String withCrewCsv
+    ) {
+        boolean empty =
+                (withGenresCsv == null || withGenresCsv.isBlank()) &&
+                        (withCastCsv == null || withCastCsv.isBlank()) &&
+                        (withCrewCsv == null || withCrewCsv.isBlank());
+
+        if (empty) return;
+
+        try {
+            MovieSearchResponse r = tmdbService.discoverMovies(
+                    page,
+                    sortBy,
+                    withGenresCsv,
+                    withCastCsv,
+                    withCrewCsv
+            );
+            addResults(unique, r);
+        } catch (Exception ignored) {}
     }
 
     // -------------------------------------------------------------------------
-    // QUIZ FEATURE (Από το Main - Το US58 δεν το είχε καθόλου)
+    // QUIZ FEATURE (same as you had)
     // -------------------------------------------------------------------------
     public List<MovieResultDto> getQuizCandidatesForUser(User user, int targetCount) {
 
@@ -166,9 +234,8 @@ public class MovieRecommendationService {
     }
 
     // -------------------------------------------------------------------------
-    // HELPERS (Από το Main - Απαραίτητα για Quiz & Fallback)
+    // HELPERS
     // -------------------------------------------------------------------------
-
     private MovieSearchResponse trendingFallback() {
         MovieSearchResponse response = new MovieSearchResponse();
         response.setResults(
@@ -223,11 +290,14 @@ public class MovieRecommendationService {
         catch (Exception e) { return null; }
     }
 
-    private String joinIds(List<PreferenceScoreDto> list) {
+    private String joinIds(List<PreferenceScoreDto> list, int limit) {
         if (list == null || list.isEmpty()) return null;
+
         return list.stream()
-                .map(p -> String.valueOf(p.getId()))
-                .limit(5)
+                .map(PreferenceScoreDto::getId)
+                .filter(Objects::nonNull)
+                .map(String::valueOf)
+                .limit(Math.max(1, limit))
                 .reduce((a, b) -> a + "," + b)
                 .orElse(null);
     }

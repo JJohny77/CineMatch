@@ -14,6 +14,10 @@ type SubmitAnswerResponse = {
   isCorrect: boolean;
   correctAnswer: string | null;
   selectedAnswer: string | null;
+
+  // fallback keys (αν backend τα λέει αλλιώς)
+  correct?: string | null;
+  selectedOption?: string | null;
 };
 
 const API_BASE_URL = "http://localhost:8080";
@@ -24,12 +28,15 @@ const QuizPage: React.FC = () => {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [score, setScore] = useState<number>(0);
+
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [isAnswerCorrect, setIsAnswerCorrect] = useState<boolean | null>(null);
   const [correctAnswer, setCorrectAnswer] = useState<string | null>(null);
+
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [hasStarted, setHasStarted] = useState<boolean>(false);
   const [isFinished, setIsFinished] = useState<boolean>(false);
+
   const [isSavingScore, setIsSavingScore] = useState<boolean>(false);
   const [saveMessage, setSaveMessage] = useState<string>("");
 
@@ -53,11 +60,14 @@ const QuizPage: React.FC = () => {
     try {
       setHasStarted(true);
       setIsFinished(false);
+      setIsProcessing(false);
+
       setScore(0);
       setCurrentIndex(0);
       setSelectedOption(null);
       setIsAnswerCorrect(null);
       setCorrectAnswer(null);
+      setSaveMessage("");
 
       const response = await fetch(`${API_BASE_URL}/quiz/start`, {
         method: "POST",
@@ -70,8 +80,14 @@ const QuizPage: React.FC = () => {
 
       if (!response.ok) throw new Error("Failed to start quiz");
 
-      const data: StartQuizResponse = await response.json();
-      const questionsList = (data as any).questions ?? data;
+      const data: any = await response.json();
+
+      // backend μπορεί να επιστρέψει είτε {questions:[...]} είτε απευθείας λίστα
+      const questionsList: QuizQuestion[] = data?.questions ?? data;
+
+      if (!Array.isArray(questionsList) || questionsList.length === 0) {
+        throw new Error("Empty quiz questions");
+      }
 
       setQuestions(questionsList);
     } catch (err) {
@@ -112,16 +128,33 @@ const QuizPage: React.FC = () => {
 
       const data: SubmitAnswerResponse = await response.json();
 
-      setIsAnswerCorrect(data.isCorrect);
-      setCorrectAnswer(data.correctAnswer);
-      setSelectedOption(data.selectedAnswer);
+      const isCorrect = !!data.isCorrect;
 
-      if (data.isCorrect) setScore((prev) => prev + 1);
+      // fallback mapping για keys
+      const correct =
+        (data.correctAnswer ?? (data as any).correct ?? null) as string | null;
 
-      // Next question after delay
+      const selected =
+        (data.selectedAnswer ??
+          (data as any).selectedOption ??
+          option) as string | null;
+
+      setIsAnswerCorrect(isCorrect);
+      setCorrectAnswer(correct);
+      setSelectedOption(selected);
+
+      // κρατάμε “σίγουρο” nextScore για το finish
+      const nextScore = isCorrect ? score + 1 : score;
+      if (isCorrect) {
+        setScore(nextScore); // κάν’ το explicit για να μη φαίνεται λάθος στο τέλος
+      }
+
       setTimeout(() => {
-        if (currentIndex === questions.length - 1) {
-          finishQuiz(data.isCorrect ? score + 1 : score);
+        const isLast = currentIndex === questions.length - 1;
+
+        if (isLast) {
+          // αν ήταν λάθος, το score μένει όπως είναι
+          finishQuiz(nextScore);
         } else {
           setCurrentIndex((prev) => prev + 1);
           setSelectedOption(null);
@@ -146,6 +179,10 @@ const QuizPage: React.FC = () => {
 
     setIsFinished(true);
     setIsSavingScore(true);
+    setIsProcessing(false);
+
+    // Σιγουρεύουμε ότι το UI δείχνει το τελικό score
+    setScore(finalScore);
 
     try {
       const response = await fetch(`${API_BASE_URL}/quiz/finish`, {
@@ -248,55 +285,45 @@ const QuizPage: React.FC = () => {
 
           {/* Options */}
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                      {questions[currentIndex].options.map((option) => {
+            {questions[currentIndex].options.map((option) => {
+              const isUserChoice = option === selectedOption;
+              const isCorrectOption = option === correctAnswer;
 
-                        const isUserChoice = option === selectedOption;
-                        const isCorrectOption = option === correctAnswer;
+              let background = "#222";
 
-                        let background = "#222"; // default
+              if (isAnswerCorrect !== null) {
+                if (isAnswerCorrect && isUserChoice) {
+                  background = "#1a7f37";
+                }
 
-                        if (isAnswerCorrect !== null) {
-                          // Αν απάντησε σωστά → μόνο πράσινη η επιλογή του χρήστη
-                          if (isAnswerCorrect && isUserChoice) {
-                            background = "#1a7f37"; // green
-                          }
+                if (!isAnswerCorrect) {
+                  if (isUserChoice) background = "#b81d24";
+                  if (isCorrectOption) background = "#1a7f37";
+                }
+              }
 
-                          // Αν απάντησε λάθος:
-                          if (!isAnswerCorrect) {
-                            if (isUserChoice) {
-                              background = "#b81d24"; // red για τη λάθος επιλογή
-                            }
-                            if (isCorrectOption) {
-                              background = "#1a7f37"; // green για τη σωστή επιλογή
-                            }
-                          }
-                        }
-
-                        return (
-                          <button
-                            key={option}
-                            onClick={() => handleSelectOption(option)}
-                            disabled={isProcessing}
-                            style={{
-                              textAlign: "left",
-                              width: "100%",
-                              padding: "12px 16px",
-                              fontSize: "16px",
-                              borderRadius: "6px",
-                              border: "1px solid #444",
-                              backgroundColor: background,
-                              color: "#fff",
-                              cursor: isProcessing ? "default" : "pointer",
-                              transition: "0.2s ease",
-                            }}
-                          >
-                            {option}
-                          </button>
-                        );
-                      })}
-
-
-
+              return (
+                <button
+                  key={option}
+                  onClick={() => handleSelectOption(option)}
+                  disabled={isProcessing}
+                  style={{
+                    textAlign: "left",
+                    width: "100%",
+                    padding: "12px 16px",
+                    fontSize: "16px",
+                    borderRadius: "6px",
+                    border: "1px solid #444",
+                    backgroundColor: background,
+                    color: "#fff",
+                    cursor: isProcessing ? "default" : "pointer",
+                    transition: "0.2s ease",
+                  }}
+                >
+                  {option}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
