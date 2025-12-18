@@ -19,47 +19,48 @@ public class MovieRecommendationService {
     private final ObjectMapper objectMapper;
     private final TmdbService tmdbService;
 
+    // -------------------------------------------------------------------------
+    // MERGED LOGIC: Λογική αναζήτησης US58 (CSV) + Κώδικας Main (clean fallback)
+    // -------------------------------------------------------------------------
     public MovieSearchResponse getRecommendationsForUser(User user) {
 
         List<PreferenceScoreDto> genres = parse(user.getTopGenres());
         List<PreferenceScoreDto> actors = parse(user.getTopActors());
         List<PreferenceScoreDto> directors = parse(user.getTopDirectors());
 
-        boolean hasData =
-                !genres.isEmpty() || !actors.isEmpty() || !directors.isEmpty();
+        boolean hasData = !genres.isEmpty() || !actors.isEmpty() || !directors.isEmpty();
 
-        // FALLBACK 1 → TRENDING (NO PREFS)
+        // Χρήση του helper από το Main (αντί για τον inline κώδικα του US58)
         if (!hasData) {
             return trendingFallback();
         }
 
-        // (κρατάμε το υπάρχον behavior για το /movies/recommendations)
-        String withGenres = joinIds(genres);
-        String withCast = joinIds(actors);
-        String withCrew = joinIds(directors);
+        // Λογική από US58: Πολλαπλά IDs (CSV) και discoverMovies
+        String withGenresCsv = joinIds(genres);
+        String withCastCsv = joinIds(actors);
+        String withCrewCsv = joinIds(directors);
 
-        MovieSearchResponse response = tmdbService.exploreMovies(
+        MovieSearchResponse discover = tmdbService.discoverMovies(
                 1,
                 "popularity.desc",
-                null,
-                null,
-                null,
-                withCast != null ? Long.valueOf(withCast.split(",")[0]) : null,
-                withCrew != null ? Long.valueOf(withCrew.split(",")[0]) : null,
-                withGenres != null ? Integer.valueOf(withGenres.split(",")[0]) : null
+                withGenresCsv,
+                withCastCsv,
+                withCrewCsv
         );
 
-        if (response.getResults() == null || response.getResults().isEmpty()) {
+        // Χρήση του helper από το Main για fallback
+        if (discover == null || discover.getResults() == null || discover.getResults().isEmpty()) {
             return trendingFallback();
         }
 
-        return response;
+        return discover;
     }
 
-    // ✅ QUIZ: "καθαρό" preference-based pool
+    // -------------------------------------------------------------------------
+    // QUIZ FEATURE (Από το Main - Το US58 δεν το είχε καθόλου)
+    // -------------------------------------------------------------------------
     public List<MovieResultDto> getQuizCandidatesForUser(User user, int targetCount) {
 
-        // ✅ Αν δεν υπάρχει user (guest) -> καθαρό trending pool
         if (user == null) {
             MovieSearchResponse tr = trendingFallback();
             List<MovieResultDto> out = new ArrayList<>(tr.getResults() == null ? List.of() : tr.getResults());
@@ -82,33 +83,29 @@ public class MovieRecommendationService {
         }
 
         Random rnd = new Random();
-
-        // ✅ Αφαιρούμε primary_release_date.desc γιατί φέρνει “περίεργα”/upcoming vibes
         List<String> sorts = List.of(
                 "popularity.desc",
                 "vote_average.desc",
                 "revenue.desc"
         );
 
-        // unique pool
         Map<Integer, MovieResultDto> unique = new LinkedHashMap<>();
 
-        // ✅ “Σφίγγουμε” τη μίξη: κυρίως genres, λιγότερο actors/directors
         int maxGenre = 6;
         int maxActor = 3;
         int maxDirector = 2;
 
-        // --- 1) GENRES (κύριο σήμα)
+        // 1) GENRES
         for (PreferenceScoreDto g : genres.stream().limit(maxGenre).toList()) {
             Integer genreId = g.getId() != null ? g.getId().intValue() : null;
             if (genreId == null) continue;
 
-            for (int i = 0; i < 2; i++) { // 2 pages για variety
+            for (int i = 0; i < 2; i++) {
                 MovieSearchResponse r = tmdbService.exploreMovies(
                         1 + rnd.nextInt(3),
                         sorts.get(rnd.nextInt(sorts.size())),
                         null, null,
-                        5.5,          // ✅ minRating (κόβει πολύ “σκουπίδι”)
+                        5.5,
                         null, null,
                         genreId
                 );
@@ -116,7 +113,7 @@ public class MovieRecommendationService {
             }
         }
 
-        // --- 2) ACTORS (δευτερεύον σήμα)
+        // 2) ACTORS
         for (PreferenceScoreDto a : actors.stream().limit(maxActor).toList()) {
             Long castId = a.getId();
             if (castId == null) continue;
@@ -133,7 +130,7 @@ public class MovieRecommendationService {
             addResults(unique, r);
         }
 
-        // --- 3) DIRECTORS (μικρό σήμα)
+        // 3) DIRECTORS
         for (PreferenceScoreDto d : directors.stream().limit(maxDirector).toList()) {
             Long crewId = d.getId();
             if (crewId == null) continue;
@@ -150,13 +147,13 @@ public class MovieRecommendationService {
             addResults(unique, r);
         }
 
-        // --- 4) Αν ακόμη λίγα: trending αλλά πάντα με φίλτρο
+        // 4) Fill with trending if low
         if (unique.size() < Math.max(30, targetCount / 2)) {
             MovieSearchResponse tr = trendingFallback();
             addResults(unique, tr);
         }
 
-        // --- 5) Τελικό: filter + shuffle + limit
+        // 5) Final filter
         List<MovieResultDto> out = new ArrayList<>(unique.values());
         out.removeIf(m -> !isAcceptableForQuiz(m));
 
@@ -168,10 +165,12 @@ public class MovieRecommendationService {
         return out;
     }
 
-    // TRENDING → MovieSearchResponse
+    // -------------------------------------------------------------------------
+    // HELPERS (Από το Main - Απαραίτητα για Quiz & Fallback)
+    // -------------------------------------------------------------------------
+
     private MovieSearchResponse trendingFallback() {
         MovieSearchResponse response = new MovieSearchResponse();
-
         response.setResults(
                 tmdbService.getTrendingMovies("day").stream()
                         .map(t -> {
@@ -186,38 +185,30 @@ public class MovieRecommendationService {
                         })
                         .toList()
         );
-
         return response;
     }
 
     private void addResults(Map<Integer, MovieResultDto> unique, MovieSearchResponse response) {
         if (response == null || response.getResults() == null) return;
-
         for (MovieResultDto m : response.getResults()) {
             if (m == null) continue;
             int id = m.getId();
             if (id <= 0) continue;
-
-            // ✅ Βάζουμε στο pool, αλλά το τελικό φιλτράρισμα γίνεται στο τέλος
             unique.putIfAbsent(id, m);
         }
     }
 
-    // ✅ quality gate για quiz candidates
     private boolean isAcceptableForQuiz(MovieResultDto m) {
         if (m == null) return false;
         if (m.getTitle() == null || m.getTitle().isBlank()) return false;
 
-        // κόβουμε future years
         Integer y = extractYear(m.getRelease_date());
         if (y == null) return false;
         int maxYear = Year.now().getValue() - 1;
         if (y > maxYear) return false;
 
-        // θέλουμε overview για “plot mentions” (και γενικά καλύτερη ποιότητα)
         if (m.getOverview() == null || m.getOverview().trim().length() < 60) return false;
 
-        // αν έχει popularity, κράτα ένα ελάχιστο (αν είναι null, δεν κόβουμε)
         try {
             Double pop = m.getPopularity();
             if (pop != null && pop < 5.0) return false;
@@ -232,8 +223,8 @@ public class MovieRecommendationService {
         catch (Exception e) { return null; }
     }
 
-    // HELPERS
     private String joinIds(List<PreferenceScoreDto> list) {
+        if (list == null || list.isEmpty()) return null;
         return list.stream()
                 .map(p -> String.valueOf(p.getId()))
                 .limit(5)
@@ -242,14 +233,9 @@ public class MovieRecommendationService {
     }
 
     private List<PreferenceScoreDto> parse(String json) {
-        if (json == null || json.isBlank()) {
-            return Collections.emptyList();
-        }
+        if (json == null || json.isBlank()) return Collections.emptyList();
         try {
-            return objectMapper.readValue(
-                    json,
-                    new TypeReference<List<PreferenceScoreDto>>() {}
-            );
+            return objectMapper.readValue(json, new TypeReference<List<PreferenceScoreDto>>() {});
         } catch (Exception e) {
             return Collections.emptyList();
         }
