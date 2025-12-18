@@ -25,72 +25,72 @@ public class MovieRecommendationService {
         List<PreferenceScoreDto> actors = parse(user.getTopActors());
         List<PreferenceScoreDto> directors = parse(user.getTopDirectors());
 
-        boolean hasData =
-                !genres.isEmpty() || !actors.isEmpty() || !directors.isEmpty();
+        boolean hasData = !genres.isEmpty() || !actors.isEmpty() || !directors.isEmpty();
 
         // =========================
-        // FALLBACK 1 → TRENDING (NO PREFS)
+        // FALLBACK → TRENDING
         // =========================
         if (!hasData) {
-            return trendingFallback();
+            MovieSearchResponse response = new MovieSearchResponse();
+            response.setResults(
+                    tmdbService.getTrendingMovies("day").stream()
+                            .map(t -> {
+                                MovieResultDto m = new MovieResultDto();
+                                m.setId(t.getId().intValue());
+                                m.setTitle(t.getTitle());
+                                m.setOverview(t.getOverview());
+                                m.setPoster_path(t.getPosterPath());
+                                m.setRelease_date(t.getReleaseDate());
+                                m.setPopularity(t.getPopularity());
+                                return m;
+                            })
+                            .toList()
+            );
+            return response;
         }
 
         // =========================
         // PERSONALIZED DISCOVER
+        // (δώσε ΠΟΛΛΑ ids σε CSV)
         // =========================
-        String withGenres = joinIds(genres);
-        String withCast = joinIds(actors);
-        String withCrew = joinIds(directors);
+        String withGenresCsv = joinIds(genres);
+        String withCastCsv = joinIds(actors);
+        String withCrewCsv = joinIds(directors);
 
-        MovieSearchResponse response = tmdbService.exploreMovies(
-                1,                          // page
-                "popularity.desc",          // sortBy
-                null,                       // yearFrom
-                null,                       // yearTo
-                null,                       // minRating
-                withCast != null ? Long.valueOf(withCast.split(",")[0]) : null,
-                withCrew != null ? Long.valueOf(withCrew.split(",")[0]) : null,
-                withGenres != null ? Integer.valueOf(withGenres.split(",")[0]) : null
+        MovieSearchResponse discover = tmdbService.discoverMovies(
+                1,
+                "popularity.desc",
+                withGenresCsv,
+                withCastCsv,
+                withCrewCsv
         );
 
-        // =========================
-        // FALLBACK 2 → TRENDING (EMPTY DISCOVER)
-        // =========================
-        if (response.getResults() == null || response.getResults().isEmpty()) {
-            return trendingFallback();
+        // αν για κάποιο λόγο βγει άδειο -> fallback trending
+        if (discover == null || discover.getResults() == null || discover.getResults().isEmpty()) {
+            MovieSearchResponse response = new MovieSearchResponse();
+            response.setResults(
+                    tmdbService.getTrendingMovies("day").stream()
+                            .map(t -> {
+                                MovieResultDto m = new MovieResultDto();
+                                m.setId(t.getId().intValue());
+                                m.setTitle(t.getTitle());
+                                m.setOverview(t.getOverview());
+                                m.setPoster_path(t.getPosterPath());
+                                m.setRelease_date(t.getReleaseDate());
+                                m.setPopularity(t.getPopularity());
+                                return m;
+                            })
+                            .toList()
+            );
+            return response;
         }
 
-        return response;
+        return discover;
     }
 
-    // =========================
-    // TRENDING → MovieSearchResponse
-    // =========================
-    private MovieSearchResponse trendingFallback() {
-        MovieSearchResponse response = new MovieSearchResponse();
-
-        response.setResults(
-                tmdbService.getTrendingMovies("day").stream()
-                        .map(t -> {
-                            MovieResultDto m = new MovieResultDto();
-                            m.setId(t.getId().intValue());
-                            m.setTitle(t.getTitle());
-                            m.setOverview(t.getOverview());
-                            m.setPoster_path(t.getPosterPath());
-                            m.setRelease_date(t.getReleaseDate());
-                            m.setPopularity(t.getPopularity());
-                            return m;
-                        })
-                        .toList()
-        );
-
-        return response;
-    }
-
-    // =========================
-    // HELPERS
-    // =========================
     private String joinIds(List<PreferenceScoreDto> list) {
+        if (list == null || list.isEmpty()) return null;
+
         return list.stream()
                 .map(p -> String.valueOf(p.getId()))
                 .limit(5)
@@ -99,14 +99,9 @@ public class MovieRecommendationService {
     }
 
     private List<PreferenceScoreDto> parse(String json) {
-        if (json == null || json.isBlank()) {
-            return Collections.emptyList();
-        }
+        if (json == null || json.isBlank()) return Collections.emptyList();
         try {
-            return objectMapper.readValue(
-                    json,
-                    new TypeReference<List<PreferenceScoreDto>>() {}
-            );
+            return objectMapper.readValue(json, new TypeReference<List<PreferenceScoreDto>>() {});
         } catch (Exception e) {
             return Collections.emptyList();
         }

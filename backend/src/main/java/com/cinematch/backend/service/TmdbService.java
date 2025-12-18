@@ -137,6 +137,40 @@ public class TmdbService {
     }
 
     // ============================================================
+    // RECOMMENDATIONS — DISCOVER WITH CSV (genres/cast/crew)
+    // (για /movies/recommendations)
+    // ============================================================
+    public MovieSearchResponse discoverMovies(
+            int page,
+            String sortBy,
+            String withGenresCsv,
+            String withCastCsv,
+            String withCrewCsv
+    ) {
+        try {
+            if (page < 1) page = 1;
+            if (sortBy == null || sortBy.isBlank()) sortBy = "popularity.desc";
+
+            Map<String, String> params = new HashMap<>();
+            params.put("language", "en-US");
+            params.put("include_adult", "false");
+            params.put("page", String.valueOf(page));
+            params.put("sort_by", sortBy);
+
+            if (withGenresCsv != null && !withGenresCsv.isBlank()) params.put("with_genres", withGenresCsv);
+            if (withCastCsv != null && !withCastCsv.isBlank()) params.put("with_cast", withCastCsv);
+            if (withCrewCsv != null && !withCrewCsv.isBlank()) params.put("with_crew", withCrewCsv);
+
+            String json = fetchFromTmdb("/discover/movie", params);
+            return objectMapper.readValue(json, MovieSearchResponse.class);
+
+        } catch (Exception e) {
+            logger.error("Discover (CSV) error: {}", e.getMessage());
+            throw new RuntimeException("Failed to discover movies");
+        }
+    }
+
+    // ============================================================
     // GENRES
     // ============================================================
     public GenreListResponse getMovieGenres() {
@@ -281,7 +315,6 @@ public class TmdbService {
             throw new RuntimeException("Failed to load trending directors");
         }
     }
-
 
     // ============================================================
     // MOVIE DETAILS
@@ -640,6 +673,4 @@ public class TmdbService {
             throw new RuntimeException("Failed to load director details");
         }
     }
-
-
 }

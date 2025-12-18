@@ -20,6 +20,25 @@ type TmdbGenre = {
   name: string;
 };
 
+type PreferenceScoreDto = {
+  id: number;
+  score: number;
+};
+
+type UserPreferencesResponseDto = {
+  topGenres?: PreferenceScoreDto[];
+  topActors?: PreferenceScoreDto[];
+  topDirectors?: PreferenceScoreDto[];
+  lastUpdated?: string;
+};
+
+type PersonCard = {
+  id: number;
+  name: string;
+  profile_path?: string | null;
+  profilePath?: string | null;
+};
+
 // ===============================
 //  Helper API calls (actors / directors / genres)
 // ===============================
@@ -42,11 +61,80 @@ async function fetchGenres(): Promise<TmdbGenre[]> {
   return (data.genres || []) as TmdbGenre[];
 }
 
+function getAuthToken(): string | null {
+  return (
+    localStorage.getItem("token") ||
+    localStorage.getItem("jwt") ||
+    localStorage.getItem("accessToken")
+  );
+}
+
+async function fetchRecommendations(
+  token: string | null
+): Promise<ExploreMovie[]> {
+  if (!token) return [];
+  const res = await fetch("http://localhost:8080/movies/recommendations", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.results || []) as ExploreMovie[];
+}
+
+async function fetchMyPreferences(
+  token: string | null,
+  topN: number = 5
+): Promise<UserPreferencesResponseDto | null> {
+  if (!token) return null;
+  const res = await fetch(
+    `http://localhost:8080/users/me/preferences?topN=${topN}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  if (!res.ok) return null;
+  return (await res.json()) as UserPreferencesResponseDto;
+}
+
+async function fetchActorDetails(
+  token: string | null,
+  personId: number
+): Promise<PersonCard | null> {
+  if (!token) return null;
+  const res = await fetch(`http://localhost:8080/api/actors/${personId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data as PersonCard;
+}
+
+async function fetchDirectorDetails(
+  token: string | null,
+  personId: number
+): Promise<PersonCard | null> {
+  if (!token) return null;
+  const res = await fetch(`http://localhost:8080/api/directors/${personId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data as PersonCard;
+}
+
 const VISIBLE_COUNT = 5;
 
 // helper για το department
 function getDepartment(p: TmdbPerson): string {
   return p.known_for_department ?? p.knownForDepartment ?? "";
+}
+
+function getProfilePath(p: PersonCard): string | null {
+  return p.profile_path ?? p.profilePath ?? null;
 }
 
 export default function HomePage() {
@@ -96,6 +184,23 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   // ===============================
+  //  US58: Recommended for You state
+  // ===============================
+  const [recLoading, setRecLoading] = useState(false);
+  const [recError, setRecError] = useState<string | null>(null);
+
+  const [recommendedMovies, setRecommendedMovies] = useState<ExploreMovie[]>(
+    []
+  );
+  const [recMoviesOffset, setRecMoviesOffset] = useState(0);
+
+  const [topActors, setTopActors] = useState<PersonCard[]>([]);
+  const [actorsOffset, setActorsOffset] = useState(0);
+
+  const [topDirectors, setTopDirectors] = useState<PersonCard[]>([]);
+  const [directorsOffset, setDirectorsOffset] = useState(0);
+
+  // ===============================
   //  Load genres once
   // ===============================
   useEffect(() => {
@@ -105,9 +210,64 @@ export default function HomePage() {
         if (!mounted) return;
         setGenres(list);
       })
-      .catch(() => {
-        // ignore
-      });
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // ===============================
+  //  US58: load recommendations + preferences once
+  // ===============================
+  useEffect(() => {
+    let mounted = true;
+
+    const run = async () => {
+      const token = getAuthToken();
+      if (!token) return;
+
+      setRecLoading(true);
+      setRecError(null);
+
+      try {
+        const [movies, prefs] = await Promise.all([
+          fetchRecommendations(token),
+          fetchMyPreferences(token, 5),
+        ]);
+
+        if (!mounted) return;
+        setRecommendedMovies(movies || []);
+        setRecMoviesOffset(0);
+
+        const actorIds = (prefs?.topActors || []).map((x) => x.id).slice(0, 10);
+        const directorIds = (prefs?.topDirectors || [])
+          .map((x) => x.id)
+          .slice(0, 10);
+
+        const [actors, directors] = await Promise.all([
+          Promise.all(actorIds.map((id) => fetchActorDetails(token, id))),
+          Promise.all(directorIds.map((id) => fetchDirectorDetails(token, id))),
+        ]);
+
+        if (!mounted) return;
+
+        setTopActors((actors.filter(Boolean) as PersonCard[]) || []);
+        setActorsOffset(0);
+
+        setTopDirectors((directors.filter(Boolean) as PersonCard[]) || []);
+        setDirectorsOffset(0);
+      } catch (e) {
+        console.error("Failed to load recommendations/preferences", e);
+        if (!mounted) return;
+        setRecError("Could not load personalized recommendations.");
+      } finally {
+        if (!mounted) return;
+        setRecLoading(false);
+      }
+    };
+
+    run();
+
     return () => {
       mounted = false;
     };
@@ -302,10 +462,18 @@ export default function HomePage() {
     return offset + VISIBLE_COUNT < movies.length || page < totalPages;
   };
 
+  // US58 slider helpers (simple slice, no pagination on endpoint)
+  const canGoPrevSimple = (offset: number) => offset > 0;
+  const canGoNextSimple = (offset: number, len: number) =>
+    offset + VISIBLE_COUNT < len;
+
   // Genres που φαίνονται στο κέντρο
   const visibleGenres: TmdbGenre[] = selectedGenreId
     ? genres.filter((g) => g.id === selectedGenreId)
     : genres;
+
+  const token = getAuthToken();
+  const showPersonalizedSection = !!token;
 
   return (
     <div
@@ -384,7 +552,7 @@ export default function HomePage() {
         <div
           style={{
             textAlign: "center",
-            marginBottom: "40px",
+            marginBottom: "24px",
             marginTop: "-16px",
           }}
         >
@@ -421,13 +589,13 @@ export default function HomePage() {
           </p>
         </div>
 
-        {/* FILTERS ROW */}
+        {/* ✅ FILTERS ROW (moved here: between Explore Movies and Recommended for You) */}
         <div
           style={{
             display: "flex",
             flexWrap: "wrap",
             gap: "16px",
-            marginBottom: "24px",
+            marginBottom: "28px",
             alignItems: "flex-start",
           }}
         >
@@ -667,6 +835,446 @@ export default function HomePage() {
             )}
           </div>
         </div>
+
+        {/* ================== US58: RECOMMENDED FOR YOU ================== */}
+        {showPersonalizedSection ? (
+          <section style={{ marginBottom: "40px" }}>
+            <div style={{ marginBottom: "14px" }}>
+              <h2
+                style={{
+                  fontSize: "26px",
+                  borderLeft: "4px solid #e50914",
+                  paddingLeft: "10px",
+                  marginBottom: "6px",
+                }}
+              >
+                Recommended for You
+              </h2>
+              <p style={{ opacity: 0.75, margin: 0 }}>Based on your taste</p>
+              {recError && (
+                <p style={{ color: "#ff6b6b", marginTop: "10px" }}>{recError}</p>
+              )}
+              {recLoading && !recError && (
+                <p style={{ opacity: 0.8, marginTop: "10px" }}>
+                  Loading personalized content...
+                </p>
+              )}
+            </div>
+
+            {/* Top Movies slider */}
+            {recommendedMovies.length > 0 && (
+              <div style={{ marginBottom: "26px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "10px",
+                  }}
+                >
+                  <h3 style={{ fontSize: "20px", margin: 0, opacity: 0.95 }}>
+                    Top Movies
+                  </h3>
+
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      onClick={() =>
+                        setRecMoviesOffset((cur) =>
+                          Math.max(0, cur - VISIBLE_COUNT)
+                        )
+                      }
+                      disabled={recMoviesOffset <= 0}
+                      style={{
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "16px",
+                        border: "none",
+                        cursor: recMoviesOffset > 0 ? "pointer" : "default",
+                        background: recMoviesOffset > 0 ? "#333" : "#222",
+                        color: "white",
+                        opacity: recMoviesOffset > 0 ? 1 : 0.5,
+                      }}
+                    >
+                      ⟵
+                    </button>
+                    <button
+                      onClick={() =>
+                        setRecMoviesOffset((cur) =>
+                          canGoNextSimple(cur, recommendedMovies.length)
+                            ? cur + VISIBLE_COUNT
+                            : cur
+                        )
+                      }
+                      disabled={!canGoNextSimple(recMoviesOffset, recommendedMovies.length)}
+                      style={{
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "16px",
+                        border: "none",
+                        cursor: canGoNextSimple(recMoviesOffset, recommendedMovies.length)
+                          ? "pointer"
+                          : "default",
+                        background: canGoNextSimple(recMoviesOffset, recommendedMovies.length)
+                          ? "#333"
+                          : "#222",
+                        color: "white",
+                        opacity: canGoNextSimple(recMoviesOffset, recommendedMovies.length)
+                          ? 1
+                          : 0.5,
+                      }}
+                    >
+                      ⟶
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+                    gap: "20px",
+                  }}
+                >
+                  {recommendedMovies
+                    .slice(recMoviesOffset, recMoviesOffset + VISIBLE_COUNT)
+                    .map((movie) => (
+                      <div
+                        key={movie.id}
+                        onClick={() => navigate(`/movie/${movie.id}`)}
+                        style={{
+                          cursor: "pointer",
+                          textAlign: "center",
+                          transition: "transform 0.2s ease, opacity 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLDivElement).style.transform =
+                            "scale(1.03)";
+                          (e.currentTarget as HTMLDivElement).style.opacity = "0.95";
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLDivElement).style.transform = "scale(1)";
+                          (e.currentTarget as HTMLDivElement).style.opacity = "1";
+                        }}
+                      >
+                        {movie.poster_path ? (
+                          <img
+                            src={`https://image.tmdb.org/t/p/w300${movie.poster_path}`}
+                            alt={movie.title}
+                            style={{
+                              width: "100%",
+                              borderRadius: "10px",
+                              marginBottom: "8px",
+                              boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: "100%",
+                              height: "270px",
+                              borderRadius: "10px",
+                              background: "#333",
+                              marginBottom: "8px",
+                            }}
+                          />
+                        )}
+
+                        <p style={{ marginTop: "4px", fontSize: "14px", fontWeight: 500 }}>
+                          {movie.title}
+                        </p>
+                        {movie.release_date && (
+                          <p style={{ fontSize: "12px", opacity: 0.7 }}>
+                            {movie.release_date}
+                          </p>
+                        )}
+                        {movie.vote_average != null && (
+                          <p style={{ fontSize: "12px", opacity: 0.8 }}>
+                            ⭐ {movie.vote_average.toFixed(1)}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Top Actors slider */}
+            {topActors.length > 0 && (
+              <div style={{ marginBottom: "26px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "10px",
+                  }}
+                >
+                  <h3 style={{ fontSize: "20px", margin: 0, opacity: 0.95 }}>
+                    Top Actors
+                  </h3>
+
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      onClick={() =>
+                        setActorsOffset((cur) => Math.max(0, cur - VISIBLE_COUNT))
+                      }
+                      disabled={actorsOffset <= 0}
+                      style={{
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "16px",
+                        border: "none",
+                        cursor: actorsOffset > 0 ? "pointer" : "default",
+                        background: actorsOffset > 0 ? "#333" : "#222",
+                        color: "white",
+                        opacity: actorsOffset > 0 ? 1 : 0.5,
+                      }}
+                    >
+                      ⟵
+                    </button>
+                    <button
+                      onClick={() =>
+                        setActorsOffset((cur) =>
+                          canGoNextSimple(cur, topActors.length) ? cur + VISIBLE_COUNT : cur
+                        )
+                      }
+                      disabled={!canGoNextSimple(actorsOffset, topActors.length)}
+                      style={{
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "16px",
+                        border: "none",
+                        cursor: canGoNextSimple(actorsOffset, topActors.length)
+                          ? "pointer"
+                          : "default",
+                        background: canGoNextSimple(actorsOffset, topActors.length)
+                          ? "#333"
+                          : "#222",
+                        color: "white",
+                        opacity: canGoNextSimple(actorsOffset, topActors.length) ? 1 : 0.5,
+                      }}
+                    >
+                      ⟶
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+                    gap: "20px",
+                  }}
+                >
+                  {topActors
+                    .slice(actorsOffset, actorsOffset + VISIBLE_COUNT)
+                    .map((p) => {
+                      const path = getProfilePath(p);
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => navigate(`/actor/${p.id}`)}
+                          style={{
+                            cursor: "pointer",
+                            textAlign: "center",
+                            transition: "transform 0.2s ease, opacity 0.2s ease",
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLDivElement).style.transform =
+                              "scale(1.03)";
+                            (e.currentTarget as HTMLDivElement).style.opacity = "0.95";
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLDivElement).style.transform = "scale(1)";
+                            (e.currentTarget as HTMLDivElement).style.opacity = "1";
+                          }}
+                        >
+                          {path ? (
+                            <img
+                              src={`https://image.tmdb.org/t/p/w300${path}`}
+                              alt={p.name}
+                              style={{
+                                width: "100%",
+                                borderRadius: "10px",
+                                marginBottom: "8px",
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+                              }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                width: "100%",
+                                height: "270px",
+                                borderRadius: "10px",
+                                background: "#333",
+                                marginBottom: "8px",
+                              }}
+                            />
+                          )}
+                          <p style={{ marginTop: "4px", fontSize: "14px", fontWeight: 600 }}>
+                            {p.name}
+                          </p>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* Top Directors slider */}
+            {topDirectors.length > 0 && (
+              <div style={{ marginBottom: "10px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "10px",
+                  }}
+                >
+                  <h3 style={{ fontSize: "20px", margin: 0, opacity: 0.95 }}>
+                    Top Directors
+                  </h3>
+
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      onClick={() =>
+                        setDirectorsOffset((cur) => Math.max(0, cur - VISIBLE_COUNT))
+                      }
+                      disabled={directorsOffset <= 0}
+                      style={{
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "16px",
+                        border: "none",
+                        cursor: directorsOffset > 0 ? "pointer" : "default",
+                        background: directorsOffset > 0 ? "#333" : "#222",
+                        color: "white",
+                        opacity: directorsOffset > 0 ? 1 : 0.5,
+                      }}
+                    >
+                      ⟵
+                    </button>
+                    <button
+                      onClick={() =>
+                        setDirectorsOffset((cur) =>
+                          canGoNextSimple(cur, topDirectors.length)
+                            ? cur + VISIBLE_COUNT
+                            : cur
+                        )
+                      }
+                      disabled={!canGoNextSimple(directorsOffset, topDirectors.length)}
+                      style={{
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "16px",
+                        border: "none",
+                        cursor: canGoNextSimple(directorsOffset, topDirectors.length)
+                          ? "pointer"
+                          : "default",
+                        background: canGoNextSimple(directorsOffset, topDirectors.length)
+                          ? "#333"
+                          : "#222",
+                        color: "white",
+                        opacity: canGoNextSimple(directorsOffset, topDirectors.length)
+                          ? 1
+                          : 0.5,
+                      }}
+                    >
+                      ⟶
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+                    gap: "20px",
+                  }}
+                >
+                  {topDirectors
+                    .slice(directorsOffset, directorsOffset + VISIBLE_COUNT)
+                    .map((p) => {
+                      const path = getProfilePath(p);
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => navigate(`/director/${p.id}`)}
+                          style={{
+                            cursor: "pointer",
+                            textAlign: "center",
+                            transition: "transform 0.2s ease, opacity 0.2s ease",
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLDivElement).style.transform =
+                              "scale(1.03)";
+                            (e.currentTarget as HTMLDivElement).style.opacity = "0.95";
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLDivElement).style.transform = "scale(1)";
+                            (e.currentTarget as HTMLDivElement).style.opacity = "1";
+                          }}
+                        >
+                          {path ? (
+                            <img
+                              src={`https://image.tmdb.org/t/p/w300${path}`}
+                              alt={p.name}
+                              style={{
+                                width: "100%",
+                                borderRadius: "10px",
+                                marginBottom: "8px",
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+                              }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                width: "100%",
+                                height: "270px",
+                                borderRadius: "10px",
+                                background: "#333",
+                                marginBottom: "8px",
+                              }}
+                            />
+                          )}
+                          <p style={{ marginTop: "4px", fontSize: "14px", fontWeight: 600 }}>
+                            {p.name}
+                          </p>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {!recLoading &&
+              !recError &&
+              recommendedMovies.length === 0 &&
+              topActors.length === 0 &&
+              topDirectors.length === 0 && (
+                <p style={{ opacity: 0.75 }}>
+                  Not enough preference data yet — try browsing and clicking more movies/people.
+                </p>
+              )}
+          </section>
+        ) : (
+          <section style={{ marginBottom: "40px" }}>
+            <h2
+              style={{
+                fontSize: "26px",
+                borderLeft: "4px solid #e50914",
+                paddingLeft: "10px",
+                marginBottom: "6px",
+              }}
+            >
+              Recommended for You
+            </h2>
+            <p style={{ opacity: 0.75, margin: 0 }}>
+              Login to see personalized recommendations.
+            </p>
+          </section>
+        )}
 
         {error && <p style={{ color: "#ff6b6b", marginBottom: "16px" }}>{error}</p>}
         {initialLoading && !error && (
