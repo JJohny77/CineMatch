@@ -47,8 +47,7 @@ export default function Navbar() {
           {isLoggedIn && <Link style={linkStyle} to="/profile">Profile</Link>}
           {isLoggedIn && (
             <>
-              <Link style={linkStyle} to="/upload">Upload</Link>
-              <Link style={linkStyle} to="/gallery">My Gallery</Link>
+              <Link style={linkStyle} to="/feed">Feed</Link>
             </>
           )}
         </div>
@@ -142,8 +141,7 @@ export default function Navbar() {
         {isLoggedIn && (
            <>
              <MobileItem to="/profile" close={setMobileOpen}>Profile</MobileItem>
-             <MobileItem to="/upload" close={setMobileOpen}>Upload</MobileItem>
-             <MobileItem to="/gallery" close={setMobileOpen}>My Gallery</MobileItem>
+             <MobileItem to="/feed" close={setMobileOpen}>Feed</MobileItem>
            </>
          )}
 

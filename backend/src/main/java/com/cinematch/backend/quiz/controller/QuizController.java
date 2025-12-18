@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.Map;
 
 @RequiredArgsConstructor
@@ -27,16 +26,16 @@ public class QuizController {
     private final CurrentUserService currentUserService;
 
     // ================================
-    // US21 — Start Quiz
+    // Start Quiz
     // ================================
     @PostMapping("/start")
     public ResponseEntity<QuizResponse> startQuiz() {
-        QuizResponse response = quizService.startQuiz();
+        QuizResponse response = quizService.startQuiz(); // ✅ no args
         return ResponseEntity.ok(response);
     }
 
     // ================================
-    // US22 — Submit Answer
+    // Submit Answer
     // ================================
     @PostMapping("/answer")
     public ResponseEntity<SubmitAnswerResponse> submitAnswer(
@@ -47,10 +46,9 @@ public class QuizController {
                 request.getSelectedOption()
         );
 
-        // ΠΑΝΤΑ δίνουμε την πραγματική σωστή απάντηση
         String correct = quizService.getCorrectAnswer(request.getQuestion());
 
-        // QUIZ_CORRECT / QUIZ_WRONG event
+        // log event
         User user = currentUserService.getCurrentUserOrNull();
         if (user != null) {
             Map<String, Object> payload = new HashMap<>();
@@ -75,6 +73,9 @@ public class QuizController {
         );
     }
 
+    // ================================
+    // Finish Quiz
+    // ================================
     @PostMapping("/finish")
     public ResponseEntity<FinishQuizResponse> finishQuiz(
             @RequestBody FinishQuizRequest request
@@ -84,7 +85,7 @@ public class QuizController {
     }
 
     // ================================
-    // US24 — Leaderboard
+    // Leaderboard
     // ================================
     @GetMapping("/leaderboard")
     public ResponseEntity<List<LeaderboardEntry>> getLeaderboard() {
