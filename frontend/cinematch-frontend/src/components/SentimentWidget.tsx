@@ -1,137 +1,244 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../api/httpClient";
 
-type SentimentLabel = "POSITIVE" | "NEGATIVE" | "NEUTRAL";
-
-interface SentimentResponse {
-  sentiment: string;
-  score: number;
+interface MovieCard {
+  adult?: boolean;
+  backdrop_path?: string | null;
+  genre_ids?: number[];
+  id: number;
+  original_language?: string;
+  original_title?: string;
+  overview?: string;
+  popularity?: number;
+  poster_path?: string | null;
+  release_date?: string;
+  title?: string;
+  video?: boolean;
+  vote_average?: number;
+  vote_count?: number;
 }
 
-const DEBOUNCE_DELAY = 500;
+interface RecommendByMoodResponse {
+  sentiment: string; // positive / negative / neutral / loading
+  score: number;
+  tag: string; // uplifting / dark / neutral
+  results: MovieCard[];
+}
 
 const SentimentWidget: React.FC = () => {
+  const navigate = useNavigate();
+
   const [text, setText] = useState("");
-  const [sentiment, setSentiment] = useState<SentimentResponse | null>(null);
+  const [data, setData] = useState<RecommendByMoodResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!text.trim()) {
-      setSentiment(null);
-      setError(null);
+  const handleFindMovies = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const trimmed = text.trim();
+    if (!trimmed) {
+      setData(null);
+      setError("Please describe your mood first.");
       return;
     }
 
     setIsLoading(true);
     setError(null);
 
-    const controller = new AbortController();
-    const timeoutId = window.setTimeout(async () => {
-      try {
-        const API_URL = "http://localhost:8080";
-        const response = await axios.post<SentimentResponse>(
-          `${API_URL}/ai/sentiment`,
-          { text },
-          { signal: controller.signal }
-        );
-        setSentiment(response.data);
-      } catch (err) {
-        if (!controller.signal.aborted) {
-          setError("⚠ Κάτι πήγε στραβά, δοκίμασε ξανά.");
-          setSentiment(null);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsLoading(false);
-        }
-      }
-    }, DEBOUNCE_DELAY);
-
-    return () => {
-      clearTimeout(timeoutId);
-      controller.abort();
-    };
-  }, [text]);
-
-  const getSentimentDisplay = (label: SentimentLabel) => {
-    switch (label) {
-      case "POSITIVE":
-        return { text: "Θετικό", color: "#4CAF50" };
-      case "NEGATIVE":
-        return { text: "Αρνητικό", color: "#FF5252" };
-      case "NEUTRAL":
-      default:
-        return { text: "Ουδέτερο", color: "#FBC02D" };
+    try {
+      const res = await api.post<RecommendByMoodResponse>("/ai/recommend-by-mood", {
+        text: trimmed,
+      });
+      setData(res.data);
+    } catch (err) {
+      setError("⚠ Something went wrong. Please try again.");
+      setData(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const renderResult = () => {
-    if (error) {
-      return (
-        <div style={{ marginTop: 10, color: "#ff6b6b", fontSize: 14 }}>
-          {error}
-        </div>
-      );
-    }
-
-    if (!sentiment) return null;
-
-    const normalized = sentiment.sentiment.toUpperCase() as SentimentLabel;
-    const { text: labelText, color } = getSentimentDisplay(normalized);
-    const confidence = (sentiment.score * 100).toFixed(1);
-
-    return (
-      <div
-        style={{
-          marginTop: 16,
-          background: "rgba(255, 255, 255, 0.06)",
-          padding: "12px 14px",
-          borderRadius: 8,
-          border: `1px solid ${color}55`,
-          color: "#fff",
-          fontSize: 15,
-        }}
-      >
-        <strong style={{ color }}>{labelText}</strong>
-        <span style={{ marginLeft: 8, opacity: 0.9 }}>
-          (Confidence: {confidence}%)
-        </span>
-      </div>
-    );
-  };
+  const confidencePct = data ? (data.score * 100).toFixed(1) : null;
 
   return (
     <div style={{ marginTop: "40px" }}>
-      <h2 style={{ marginBottom: "12px", fontSize: "26px", color: "#fff" }}>
-        Sentiment Analysis
-      </h2>
+      <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
+        <h2 style={{ marginBottom: "12px", fontSize: "26px", color: "#fff" }}>
+          What are you in the mood for?
+        </h2>
 
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="Γράψε τη γνώμη σου για την ταινία..."
-        rows={4}
-        style={{
-          width: "100%",
-          padding: "12px",
-          borderRadius: "8px",
-          border: "1px solid #444",
-          backgroundColor: "#1e1e1e",
-          color: "#fff",
-          resize: "vertical",
-          outline: "none",
-          fontSize: "15px",
-        }}
-      />
+        {/* Optional label/tooltip */}
+        <span
+          title="Powered by Sentiment Analysis (HuggingFace)"
+          style={{
+            fontSize: "12px",
+            opacity: 0.75,
+            color: "#ddd",
+            cursor: "help",
+          }}
+        >
+          Powered by Sentiment Analysis (HuggingFace)
+        </span>
+      </div>
 
-      {isLoading && text.trim() && (
-        <div style={{ marginTop: "10px", fontSize: "14px", opacity: 0.8 }}>
-          Αναλύω το κείμενό σου…
+      <form onSubmit={handleFindMovies}>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Describe what you're in the mood for..."
+          rows={4}
+          style={{
+            width: "100%",
+            padding: "12px",
+            borderRadius: "8px",
+            border: "1px solid #444",
+            backgroundColor: "#1e1e1e",
+            color: "#fff",
+            resize: "vertical",
+            outline: "none",
+            fontSize: "15px",
+          }}
+        />
+
+        <button
+          type="submit"
+          disabled={isLoading || !text.trim()}
+          style={{
+            marginTop: "12px",
+            padding: "10px 16px",
+            borderRadius: "8px",
+            border: "none",
+            cursor: isLoading || !text.trim() ? "default" : "pointer",
+            backgroundColor: isLoading || !text.trim() ? "#333" : "#e50914",
+            color: "#fff",
+            fontSize: "15px",
+            fontWeight: 600,
+            opacity: isLoading || !text.trim() ? 0.7 : 1,
+            transition: "0.2s",
+          }}
+        >
+          {isLoading ? "Finding..." : "Find Movies"}
+        </button>
+      </form>
+
+      {/* Error */}
+      {error && (
+        <div style={{ marginTop: 10, color: "#ff6b6b", fontSize: 14 }}>
+          {error}
         </div>
       )}
 
-      {renderResult()}
+      {/* Meta info */}
+      {data && !error && (
+        <div
+          style={{
+            marginTop: 16,
+            background: "rgba(255, 255, 255, 0.06)",
+            padding: "12px 14px",
+            borderRadius: 8,
+            border: "1px solid rgba(255,255,255,0.12)",
+            color: "#fff",
+            fontSize: 14,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "10px",
+            alignItems: "center",
+          }}
+        >
+          <span style={{ opacity: 0.9 }}>
+            Sentiment: <strong>{data.sentiment}</strong>
+          </span>
+          <span style={{ opacity: 0.9 }}>
+            Tag: <strong>{data.tag}</strong>
+          </span>
+          {confidencePct !== null && (
+            <span style={{ opacity: 0.9 }}>
+              Confidence: <strong>{confidencePct}%</strong>
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Results grid */}
+      {data?.results && data.results.length > 0 && (
+        <div style={{ marginTop: "18px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+              gap: "18px",
+            }}
+          >
+            {data.results.map((movie) => (
+              <div
+                key={movie.id}
+                onClick={() => navigate(`/movie/${movie.id}`)}
+                style={{
+                  cursor: "pointer",
+                  textAlign: "center",
+                  transition: "transform 0.2s ease, opacity 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.transform = "scale(1.03)";
+                  (e.currentTarget as HTMLDivElement).style.opacity = "0.95";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.transform = "scale(1)";
+                  (e.currentTarget as HTMLDivElement).style.opacity = "1";
+                }}
+              >
+                {movie.poster_path ? (
+                  <img
+                    src={`https://image.tmdb.org/t/p/w300${movie.poster_path}`}
+                    alt={movie.title || "Movie poster"}
+                    style={{
+                      width: "100%",
+                      borderRadius: "10px",
+                      marginBottom: "8px",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: "100%",
+                      height: "240px",
+                      borderRadius: "10px",
+                      background: "#333",
+                      marginBottom: "8px",
+                    }}
+                  />
+                )}
+
+                <p style={{ marginTop: "4px", fontSize: "14px", fontWeight: 600 }}>
+                  {movie.title || movie.original_title || "Untitled"}
+                </p>
+
+                {movie.release_date && (
+                  <p style={{ fontSize: "12px", opacity: 0.7 }}>
+                    {movie.release_date}
+                  </p>
+                )}
+
+                {movie.vote_average != null && (
+                  <p style={{ fontSize: "12px", opacity: 0.85 }}>
+                    ⭐ {Number(movie.vote_average).toFixed(1)}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {data && (!data.results || data.results.length === 0) && !error && (
+        <p style={{ marginTop: "16px", opacity: 0.8, color: "#fff" }}>
+          No movies found for this mood. Try a different description.
+        </p>
+      )}
     </div>
   );
 };
