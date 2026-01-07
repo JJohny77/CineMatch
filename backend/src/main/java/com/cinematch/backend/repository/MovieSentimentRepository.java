@@ -10,4 +10,6 @@ public interface MovieSentimentRepository extends JpaRepository<MovieSentiment, 
     List<MovieSentiment> findByMovieId(Long movieId);
 
     boolean existsByMovieIdAndTagAndSource(Long movieId, String tag, String source);
+
+    List<MovieSentiment> findTop200ByTagOrderByScoreDesc(String tag);
 }
