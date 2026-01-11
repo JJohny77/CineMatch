@@ -10,11 +10,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import static org.mockito.ArgumentMatchers.anyString;
-
 
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -64,10 +63,9 @@ class AuthServiceTest {
         when(passwordEncoder.matches("1234", "hashed")).thenReturn(true);
         when(jwtUtil.generateToken(anyString(), anyString())).thenReturn("fake-jwt");
 
-
-
         String token = authService.login(request);
 
         assertEquals("fake-jwt", token);
+        verify(jwtUtil).generateToken(anyString(), anyString());
     }
 }
