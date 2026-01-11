@@ -35,4 +35,5 @@ jobs:
 
       # 🔥 Τώρα ΔΕΝ κάνουμε package, κάνουμε κανονικά tests
       - name: Run Unit Tests
+        working-directory: backend
         run: mvn -B test
