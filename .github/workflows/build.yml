@@ -35,4 +35,7 @@ jobs:
 
       # 🔥 Τώρα ΔΕΝ κάνουμε package, κάνουμε κανονικά tests
       - name: Run Unit Tests
-        run: mvn -B test
+        working-directory: backend
+        run: |
+          chmod +x mvnw
+          ./mvnw -B test

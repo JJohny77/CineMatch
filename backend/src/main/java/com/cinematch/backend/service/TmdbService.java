@@ -137,6 +137,40 @@ public class TmdbService {
     }
 
     // ============================================================
+    // RECOMMENDATIONS — DISCOVER WITH CSV (genres/cast/crew)
+    // (για /movies/recommendations)
+    // ============================================================
+    public MovieSearchResponse discoverMovies(
+            int page,
+            String sortBy,
+            String withGenresCsv,
+            String withCastCsv,
+            String withCrewCsv
+    ) {
+        try {
+            if (page < 1) page = 1;
+            if (sortBy == null || sortBy.isBlank()) sortBy = "popularity.desc";
+
+            Map<String, String> params = new HashMap<>();
+            params.put("language", "en-US");
+            params.put("include_adult", "false");
+            params.put("page", String.valueOf(page));
+            params.put("sort_by", sortBy);
+
+            if (withGenresCsv != null && !withGenresCsv.isBlank()) params.put("with_genres", withGenresCsv);
+            if (withCastCsv != null && !withCastCsv.isBlank()) params.put("with_cast", withCastCsv);
+            if (withCrewCsv != null && !withCrewCsv.isBlank()) params.put("with_crew", withCrewCsv);
+
+            String json = fetchFromTmdb("/discover/movie", params);
+            return objectMapper.readValue(json, MovieSearchResponse.class);
+
+        } catch (Exception e) {
+            logger.error("Discover (CSV) error: {}", e.getMessage());
+            throw new RuntimeException("Failed to discover movies");
+        }
+    }
+
+    // ============================================================
     // GENRES
     // ============================================================
     public GenreListResponse getMovieGenres() {
@@ -282,7 +316,6 @@ public class TmdbService {
         }
     }
 
-
     // ============================================================
     // MOVIE DETAILS
     // ============================================================
@@ -326,6 +359,64 @@ public class TmdbService {
         } catch (Exception e) {
             logger.error("Error loading movie details for {}: {}", id, e.getMessage());
             throw new RuntimeException("Failed to load movie details");
+        }
+    }
+
+    // ============================================================
+    // MOVIE CARD (for widgets / grids)
+    // ============================================================
+    public MovieResultDto getMovieCard(Long id) {
+        try {
+            if (id == null) throw new IllegalArgumentException("Movie id cannot be null");
+
+            String jsonString =
+                    fetchFromTmdb("/movie/" + id, Map.of("language", "en-US"));
+
+            Map<String, Object> json = objectMapper.readValue(jsonString, Map.class);
+
+            MovieResultDto dto = new MovieResultDto();
+
+            dto.setId(((Number) json.get("id")).intValue());
+            dto.setTitle((String) json.get("title"));
+            dto.setOverview((String) json.get("overview"));
+            dto.setPoster_path((String) json.get("poster_path"));
+            dto.setBackdrop_path((String) json.get("backdrop_path"));
+            dto.setRelease_date((String) json.get("release_date"));
+
+            dto.setPopularity(json.get("popularity") != null
+                    ? ((Number) json.get("popularity")).doubleValue()
+                    : 0.0);
+
+            dto.setVote_average(json.get("vote_average") != null
+                    ? ((Number) json.get("vote_average")).doubleValue()
+                    : 0.0);
+
+            dto.setVote_count(json.get("vote_count") != null
+                    ? ((Number) json.get("vote_count")).intValue()
+                    : 0);
+
+            dto.setAdult(json.get("adult") != null && (Boolean) json.get("adult"));
+            dto.setVideo(json.get("video") != null && (Boolean) json.get("video"));
+            dto.setOriginal_language((String) json.get("original_language"));
+            dto.setOriginal_title((String) json.get("original_title"));
+
+            // genre_ids from "genres"
+            List<Integer> genreIds = new ArrayList<>();
+            List<Map<String, Object>> genreList = (List<Map<String, Object>>) json.get("genres");
+            if (genreList != null) {
+                for (Map<String, Object> g : genreList) {
+                    if (g.get("id") != null) {
+                        genreIds.add(((Number) g.get("id")).intValue());
+                    }
+                }
+            }
+            dto.setGenre_ids(genreIds);
+
+            return dto;
+
+        } catch (Exception e) {
+            logger.error("Error loading movie card for {}: {}", id, e.getMessage());
+            throw new RuntimeException("Failed to load movie card");
         }
     }
 
@@ -640,6 +731,4 @@ public class TmdbService {
             throw new RuntimeException("Failed to load director details");
         }
     }
-
-
 }

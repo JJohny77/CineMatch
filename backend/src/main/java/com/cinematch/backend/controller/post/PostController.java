@@ -1,9 +1,8 @@
 package com.cinematch.backend.controller.post;
 
+import com.cinematch.backend.dto.post.*;
 import com.cinematch.backend.model.User;
 import com.cinematch.backend.model.post.Post;
-import com.cinematch.backend.model.post.PostComment;
-import com.cinematch.backend.model.post.PostRating;
 import com.cinematch.backend.repository.UserRepository;
 import com.cinematch.backend.service.post.PostCommentService;
 import com.cinematch.backend.service.post.PostRatingService;
@@ -29,11 +28,18 @@ public class PostController {
     // =====================================
     // Helper to get logged-in userId
     // =====================================
-    private Long getCurrentUserId(Authentication auth) {
+    private Long getCurrentUserIdOrNull(Authentication auth) {
+        if (auth == null) return null;
         String email = auth.getName();
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        return user.getId();
+        return userRepository.findByEmail(email)
+                .map(User::getId)
+                .orElse(null);
+    }
+
+    private Long getCurrentUserId(Authentication auth) {
+        Long id = getCurrentUserIdOrNull(auth);
+        if (id == null) throw new RuntimeException("User not found");
+        return id;
     }
 
     // =====================================
@@ -70,38 +76,41 @@ public class PostController {
     }
 
     // =====================================
-    // FEED (global)
+    // FEED
     // =====================================
     @GetMapping("/feed")
-    public ResponseEntity<List<Post>> getFeed() {
-        return ResponseEntity.ok(postService.getFeed());
+    public ResponseEntity<List<PostFeedDto>> getFeed(Authentication authentication) {
+
+        Long viewerUserId = getCurrentUserIdOrNull(authentication);
+
+        List<Post> feed = postService.getFeed();
+
+        List<PostFeedDto> mapped = feed.stream()
+                .map(p -> toFeedPostDto(p, viewerUserId))
+                .toList();
+
+        return ResponseEntity.ok(mapped);
     }
 
     // =====================================
-    // RATE POST (like or 1–5)
+    // TOGGLE LIKE
+    // frontend calls POST /posts/{id}/like
     // =====================================
-    @PostMapping("/{postId}/rate")
-    public ResponseEntity<PostRating> ratePost(
+    @PostMapping("/{postId}/like")
+    public ResponseEntity<LikeResponseDto> toggleLike(
             @PathVariable Long postId,
-            @RequestBody Map<String, Object> body,
             Authentication authentication
     ) {
         Long userId = getCurrentUserId(authentication);
-
-        Integer value = (Integer) body.get("value");
-        if (value == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        PostRating rating = ratingService.ratePost(userId, postId, value);
-        return ResponseEntity.ok(rating);
+        LikeResponseDto dto = ratingService.toggleLike(userId, postId);
+        return ResponseEntity.ok(dto);
     }
 
     // =====================================
     // ADD COMMENT
     // =====================================
     @PostMapping("/{postId}/comments")
-    public ResponseEntity<PostComment> addComment(
+    public ResponseEntity<PostCommentDto> addComment(
             @PathVariable Long postId,
             @RequestBody Map<String, Object> body,
             Authentication authentication
@@ -113,7 +122,7 @@ public class PostController {
             return ResponseEntity.badRequest().build();
         }
 
-        PostComment comment = commentService.addComment(userId, postId, text);
+        PostCommentDto comment = commentService.addComment(userId, postId, text);
         return ResponseEntity.ok(comment);
     }
 
@@ -121,8 +130,48 @@ public class PostController {
     // GET COMMENTS FOR POST
     // =====================================
     @GetMapping("/{postId}/comments")
-    public ResponseEntity<List<PostComment>> getComments(@PathVariable Long postId) {
+    public ResponseEntity<List<PostCommentDto>> getComments(@PathVariable Long postId) {
         return ResponseEntity.ok(commentService.getComments(postId));
     }
+
+    // =====================================
+    // ✅ DELETE POST (ONLY OWNER)
+    // =====================================
+    @DeleteMapping("/{postId}")
+    public ResponseEntity<?> deletePost(
+            @PathVariable Long postId,
+            Authentication authentication
+    ) {
+        Long userId = getCurrentUserId(authentication);
+        postService.deletePost(userId, postId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // =====================================
+    // MAPPER
+    // =====================================
+    private PostFeedDto toFeedPostDto(Post p, Long viewerUserId) {
+
+        User author = userRepository.findById(p.getUserId()).orElse(null);
+
+        int likesCount = ratingService.countLikes(p.getId());
+        boolean likedByMe = (viewerUserId != null) && ratingService.likedByUser(p.getId(), viewerUserId);
+        boolean ownedByMe = (viewerUserId != null) && p.getUserId().equals(viewerUserId);
+
+        return PostFeedDto.builder()
+                .id(p.getId())
+                .mediaUrl(p.getMediaUrl())
+                .mediaType(p.getMediaType())
+                .caption(p.getCaption())
+                .createdAt(p.getCreatedAt())
+                .movieId(p.getMovieId())
+                .author(PostAuthorDto.builder()
+                        .id(p.getUserId())
+                        .username(author != null && author.getUsername() != null ? author.getUsername() : "unknown")
+                        .build())
+                .likesCount(likesCount)
+                .likedByMe(likedByMe)
+                .ownedByMe(ownedByMe)
+                .build();
+    }
 }
-    
