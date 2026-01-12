@@ -68,4 +68,63 @@ class AuthServiceTest {
         assertEquals("fake-jwt", token);
         verify(jwtUtil).generateToken(anyString(), anyString());
     }
+
+    @Test
+    void register_EmailAlreadyExists_ThrowsException() {
+        RegisterRequest request = new RegisterRequest();
+        request.setEmail("test@mail.com");
+        request.setPassword("pass");
+
+        when(userRepository.existsByEmail("test@mail.com")).thenReturn(true);
+
+        RuntimeException ex = assertThrows(
+                RuntimeException.class,
+                () -> authService.register(request)
+        );
+
+        assertEquals("Email already exists", ex.getMessage());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void login_WrongEmail_ThrowsException() {
+        LoginRequest request = new LoginRequest();
+        request.setEmail("wrong@mail.com");
+        request.setPassword("1234");
+
+        when(userRepository.findByEmail("wrong@mail.com"))
+                .thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(
+                RuntimeException.class,
+                () -> authService.login(request)
+        );
+
+        assertEquals("Invalid credentials", ex.getMessage());
+    }
+
+    @Test
+    void login_WrongPassword_ThrowsException() {
+        LoginRequest request = new LoginRequest();
+        request.setEmail("john@mail.com");
+        request.setPassword("wrong");
+
+        User user = User.builder()
+                .email("john@mail.com")
+                .password("hashed")
+                .role(Role.USER)
+                .build();
+
+        when(userRepository.findByEmail("john@mail.com"))
+                .thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrong", "hashed"))
+                .thenReturn(false);
+
+        RuntimeException ex = assertThrows(
+                RuntimeException.class,
+                () -> authService.login(request)
+        );
+
+        assertEquals("Invalid credentials", ex.getMessage());
+    }
 }
